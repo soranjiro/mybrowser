@@ -86,24 +86,6 @@ void QuickSearchDialog::setupUI() {
 
   // Search icon and title
   QHBoxLayout *titleLayout = new QHBoxLayout();
-  QLabel *searchIcon = new QLabel("⌘");
-  searchIcon->setStyleSheet(
-      "QLabel {"
-      "  font-size: 20px;"
-      "  color: rgba(255, 255, 255, 0.8);"
-      "}");
-
-  QLabel *titleLabel = new QLabel("Command Palette");
-  titleLabel->setStyleSheet(
-      "QLabel {"
-      "  color: rgba(255, 255, 255, 0.9);"
-      "  font-size: 16px;"
-      "  font-weight: 500;"
-      "  background-color: transparent;"
-      "}");
-
-  titleLayout->addWidget(searchIcon);
-  titleLayout->addWidget(titleLabel);
   titleLayout->addStretch();
   containerLayout->addLayout(titleLayout);
 
@@ -116,14 +98,10 @@ void QuickSearchDialog::setupUI() {
       "  background-color: rgba(255, 255, 255, 0.08);"
       "  border: 2px solid rgba(255, 255, 255, 0.1);"
       "  border-radius: 8px;"
-      "  padding: 2px 2px;" // Increased padding for better appearance
-      "  font-size: 18px;"  // Larger font size
+      "  padding: 2px 2px;"
+      "  font-size: 18px;"
       "  color: white;"
       "  selection-background-color: rgba(0, 122, 255, 0.4);"
-      "}"
-      "QLineEdit:focus {"
-      "  border-color: rgba(0, 122, 255, 0.8);"
-      "  background-color: rgba(255, 255, 255, 0.12);"
       "}"
       "QLineEdit::placeholder {"
       "  color: rgba(255, 255, 255, 0.5);"
