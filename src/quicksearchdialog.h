@@ -44,13 +44,13 @@ private:
   void executeSearch();
   void executeCommand(const QString &command);
   void animateResize(int newHeight);
+  bool isHeaderItem(QListWidgetItem *item);
 
   QLineEdit *searchLineEdit;
   QListWidget *suggestionsWidget;
   QVBoxLayout *mainLayout;
   QTimer *searchTimer;
-  QPropertyAnimation *resizeAnimation;
-  QPropertyAnimation *fadeAnimation;
+  // Animation properties removed for immediate display
   QStringList searchHistory;
   QStringList currentSuggestions;
   QStringList currentCommands;

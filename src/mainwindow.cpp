@@ -761,13 +761,9 @@ void MainWindow::handleQuickSearch(const QString &query) {
                     .arg(QUrl::toPercentEncoding(query).constData());
   }
 
-  // Load in current tab or create new tab if none exists
+  // Always create a new tab for quick search results
+  newTab();
   WebView *view = currentWebView();
-  if (!view) {
-    newTab();
-    view = currentWebView();
-  }
-
   if (view) {
     view->setUrl(QUrl(urlString));
   }

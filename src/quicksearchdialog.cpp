@@ -19,15 +19,7 @@ QuickSearchDialog::QuickSearchDialog(QWidget *parent)
   searchTimer->setInterval(300); // 300ms delay
   connect(searchTimer, &QTimer::timeout, this, &QuickSearchDialog::updateSuggestions);
 
-  // Animation for smooth resizing
-  resizeAnimation = new QPropertyAnimation(this, "size");
-  resizeAnimation->setDuration(200);
-  resizeAnimation->setEasingCurve(QEasingCurve::OutCubic);
-
-  // Animation for fading suggestions
-  fadeAnimation = new QPropertyAnimation();
-  fadeAnimation->setDuration(150);
-  fadeAnimation->setEasingCurve(QEasingCurve::OutCubic);
+  // Animation removed for immediate display
 
   // Install event filter on parent to detect clicks outside the dialog
   if (parent) {
@@ -168,16 +160,35 @@ void QuickSearchDialog::keyPressEvent(QKeyEvent *event) {
     reject();
     break;
   case Qt::Key_Down:
+    event->accept();
     selectNextSuggestion();
     break;
   case Qt::Key_Up:
+    event->accept();
     selectPreviousSuggestion();
     break;
   case Qt::Key_Return:
   case Qt::Key_Enter:
+    event->accept();
     executeSearch();
     break;
+  case Qt::Key_Tab:
+    // Tab cycles through suggestions like Down arrow
+    event->accept();
+    selectNextSuggestion();
+    break;
+  case Qt::Key_Backtab: // Shift+Tab
+    // Shift+Tab cycles backwards like Up arrow
+    event->accept();
+    selectPreviousSuggestion();
+    break;
   default:
+    // For text input, make sure the search input has focus
+    if (event->text().length() > 0 && event->text().at(0).isPrint()) {
+      searchLineEdit->setFocus();
+      selectedSuggestionIndex = -1;
+      suggestionsWidget->clearSelection();
+    }
     QDialog::keyPressEvent(event);
   }
 }
@@ -195,6 +206,10 @@ void QuickSearchDialog::showEvent(QShowEvent *event) {
     move(x, y);
   }
 
+  // Reset selection state
+  selectedSuggestionIndex = -1;
+  suggestionsWidget->clearSelection();
+
   // Focus on search field
   searchLineEdit->setFocus();
   searchLineEdit->selectAll();
@@ -208,12 +223,16 @@ void QuickSearchDialog::showEvent(QShowEvent *event) {
 void QuickSearchDialog::onTextChanged(const QString &text) {
   searchTimer->stop();
   selectedSuggestionIndex = -1;
+  suggestionsWidget->clearSelection(); // Clear visual selection
 
   if (!text.isEmpty()) {
     searchTimer->start();
   } else {
     populateSuggestions("");
   }
+
+  // Return focus to search input
+  searchLineEdit->setFocus();
 }
 
 void QuickSearchDialog::onSuggestionClicked() {
@@ -327,20 +346,25 @@ void QuickSearchDialog::populateSuggestions(const QString &query) {
       }
     }
 
-    // Add some common search suggestions if we have space
-    if (suggestions.size() < 6) {
-      QStringList commonSuggestions = {
+    // Add some Google-style search suggestions if we have space
+    if (suggestions.size() < 8) { // Increased from 6 to 8 for more suggestions
+      QStringList googleStyleSuggestions = {
+          query + " meaning",
           query + " tutorial",
+          query + " how to",
+          query + " what is",
           query + " documentation",
+          query + " examples",
           query + " download",
           query + " github",
+          query + " stack overflow",
           query + " reddit"};
 
-      for (const QString &suggestion : commonSuggestions) {
+      for (const QString &suggestion : googleStyleSuggestions) {
+        if (suggestions.size() >= 8)
+          break;
         suggestions << QString("💡 %1").arg(suggestion);
         currentSuggestions.append(suggestion);
-        if (suggestions.size() >= 6)
-          break;
       }
     }
 
@@ -354,71 +378,97 @@ void QuickSearchDialog::populateSuggestions(const QString &query) {
     suggestionsWidget->show();
   }
 
-  // Adjust dialog size based on content
+  // Adjust dialog size based on content (no animation)
   int itemHeight = 35;
   int minItems = 6; // Minimum items to always show
   int actualItems = qMax(minItems, suggestionsWidget->count());
   int maxHeight = qMin(300, actualItems * itemHeight);
 
-  // Only animate if there's a significant change
+  // Resize immediately without animation
   int targetHeight = 180 + maxHeight; // Base height + suggestions height
-  if (abs(height() - targetHeight) > 20) {
-    animateResize(targetHeight);
-  }
+  resize(800, targetHeight);
 }
 
 void QuickSearchDialog::selectNextSuggestion() {
   if (suggestionsWidget->count() == 0)
     return;
 
-  selectedSuggestionIndex++;
-  if (selectedSuggestionIndex >= suggestionsWidget->count()) {
-    selectedSuggestionIndex = 0;
-  }
+  // Skip header items (those that don't start with spaces or emoji)
+  do {
+    selectedSuggestionIndex++;
+    if (selectedSuggestionIndex >= suggestionsWidget->count()) {
+      selectedSuggestionIndex = 0;
+    }
+  } while (selectedSuggestionIndex < suggestionsWidget->count() &&
+           isHeaderItem(suggestionsWidget->item(selectedSuggestionIndex)));
 
   suggestionsWidget->setCurrentRow(selectedSuggestionIndex);
+  suggestionsWidget->setFocus(); // Ensure widget has focus for visual selection
 }
 
 void QuickSearchDialog::selectPreviousSuggestion() {
   if (suggestionsWidget->count() == 0)
     return;
 
-  selectedSuggestionIndex--;
-  if (selectedSuggestionIndex < 0) {
-    selectedSuggestionIndex = suggestionsWidget->count() - 1;
-  }
+  // Skip header items (those that don't start with spaces or emoji)
+  do {
+    selectedSuggestionIndex--;
+    if (selectedSuggestionIndex < 0) {
+      selectedSuggestionIndex = suggestionsWidget->count() - 1;
+    }
+  } while (selectedSuggestionIndex >= 0 &&
+           isHeaderItem(suggestionsWidget->item(selectedSuggestionIndex)));
 
   suggestionsWidget->setCurrentRow(selectedSuggestionIndex);
+  suggestionsWidget->setFocus(); // Ensure widget has focus for visual selection
 }
 
 void QuickSearchDialog::executeSearch() {
   QString query = searchLineEdit->text().trimmed();
 
   // If a suggestion is selected, use that instead
-  if (selectedSuggestionIndex >= 0) {
-    if (query.startsWith(">") || !currentCommands.isEmpty()) {
-      // Command mode
-      QString command;
-      if (selectedSuggestionIndex < currentCommands.size()) {
-        command = currentCommands.at(selectedSuggestionIndex);
-      } else {
-        command = query;
+  if (selectedSuggestionIndex >= 0 && selectedSuggestionIndex < suggestionsWidget->count()) {
+    QListWidgetItem *selectedItem = suggestionsWidget->item(selectedSuggestionIndex);
+    if (selectedItem && !isHeaderItem(selectedItem)) {
+      QString suggestion = selectedItem->text();
+
+      if (suggestion.startsWith("⌘")) {
+        // Command suggestion
+        QString command = suggestion.mid(suggestion.indexOf(" ") + 1);
+        executeCommand(command);
+        accept();
+        return;
+      } else if (suggestion.startsWith("🔍") || suggestion.startsWith("🌐") ||
+                 suggestion.startsWith("🕒") || suggestion.startsWith("💡")) {
+        // Search suggestion - extract the actual query
+        if (suggestion.contains(" ")) {
+          QString extractedQuery = suggestion.mid(suggestion.indexOf(" ") + 1);
+          if (extractedQuery.startsWith("\"") && extractedQuery.endsWith("\"")) {
+            extractedQuery = extractedQuery.mid(1, extractedQuery.length() - 2);
+          }
+          emit searchRequested(extractedQuery);
+          accept();
+          return;
+        }
+      } else if (suggestion.startsWith("   ")) {
+        // Indented suggestion (from history or commands)
+        QString cleanSuggestion = suggestion.trimmed();
+        if (cleanSuggestion.startsWith(">")) {
+          executeCommand(cleanSuggestion);
+        } else {
+          emit searchRequested(cleanSuggestion);
+        }
+        accept();
+        return;
       }
-      executeCommand(command);
-    } else {
-      // Search mode
-      if (selectedSuggestionIndex < currentSuggestions.size()) {
-        query = currentSuggestions.at(selectedSuggestionIndex);
-      }
-      emit searchRequested(query);
     }
+  }
+
+  // No valid suggestion selected, use raw query
+  if (query.startsWith(">")) {
+    executeCommand(query);
   } else {
-    // No suggestion selected, use raw query
-    if (query.startsWith(">")) {
-      executeCommand(query);
-    } else {
-      emit searchRequested(query);
-    }
+    emit searchRequested(query);
   }
   accept();
 }
@@ -487,16 +537,18 @@ void QuickSearchDialog::executeCommand(const QString &command) {
 }
 
 void QuickSearchDialog::animateResize(int newHeight) {
-  QSize currentSize = size();
-  QSize newSize(800, newHeight); // Updated width for command palette
+  // Animation removed - resize immediately
+  resize(800, newHeight);
+}
 
-  if (currentSize == newSize) {
-    return; // No change needed
-  }
-
-  resizeAnimation->setStartValue(currentSize);
-  resizeAnimation->setEndValue(newSize);
-  resizeAnimation->start();
+// Helper function to check if an item is a header item
+bool QuickSearchDialog::isHeaderItem(QListWidgetItem *item) {
+  if (!item)
+    return false;
+  QString text = item->text();
+  return text.startsWith("🕒 Recent") ||
+         text.startsWith("⌘ Common") ||
+         text.startsWith("💡 Popular");
 }
 
 // Event filter to handle clicks outside the dialog
