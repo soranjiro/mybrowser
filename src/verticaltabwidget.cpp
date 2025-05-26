@@ -636,7 +636,7 @@ bool VerticalTabWidget::eventFilter(QObject *obj, QEvent *event) {
       QPoint localPos = mapFromGlobal(globalPos);
 
       // Show sidebar when mouse is near left edge (0-25 pixels)
-      if (!sidebarVisible && localPos.x() <= 25 && localPos.x() >= 0 && 
+      if (!sidebarVisible && localPos.x() <= 25 && localPos.x() >= 0 &&
           localPos.y() >= 0 && localPos.y() <= height()) {
         showSidebar();
       }

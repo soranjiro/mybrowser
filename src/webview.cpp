@@ -73,7 +73,12 @@ WebView::WebView(QWidget *parent) : QWebEngineView(parent), devToolsView(nullptr
 void WebView::setPage(QWebEnginePage *page) {
   // Close existing developer tools if open
   if (devToolsView) {
+    // Safely disconnect from current page
+    if (this->page()) {
+      this->page()->setDevToolsPage(nullptr);
+    }
     devToolsView->close();
+    devToolsView->deleteLater();
     devToolsView = nullptr;
   }
 
@@ -188,17 +193,16 @@ void WebView::showDevTools() {
   // Clean up when developer tools window is closed
   connect(devToolsView, &QObject::destroyed, this, [this]() {
     devToolsView = nullptr;
+    // Use QPointer to safely check if page still exists
     if (page()) {
       page()->setDevToolsPage(nullptr);
-    }
-  }, Qt::QueuedConnection);
+    } }, Qt::QueuedConnection);
 
-  // Update title when page title changes
+  // Update title when page title changes - use weak connection
   connect(page(), &QWebEnginePage::titleChanged, this, [this](const QString &title) {
     if (devToolsView) {
       devToolsView->setWindowTitle("開発者ツール - " + title);
-    }
-  }, Qt::QueuedConnection);
+    } }, Qt::QueuedConnection);
 
   devToolsView->show();
   qDebug() << "Developer tools opened";
@@ -237,4 +241,19 @@ void WebView::contextMenuEvent(QContextMenuEvent *event) {
   connect(inspectAction, &QAction::triggered, this, &WebView::showDevTools);
 
   menu->popup(event->globalPos());
+}
+
+WebView::~WebView() {
+  // Safely close developer tools if open
+  if (devToolsView) {
+    // Disconnect from page before closing
+    if (page()) {
+      page()->setDevToolsPage(nullptr);
+    }
+
+    // Safely delete the developer tools view
+    devToolsView->close();
+    devToolsView->deleteLater();
+    devToolsView = nullptr;
+  }
 }

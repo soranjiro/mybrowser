@@ -63,5 +63,12 @@ int main(int argc, char *argv[]) {
 
   MainWindow w;
   w.show();
-  return a.exec();
+
+  int result = a.exec();
+
+  // Clean shutdown - ensure all web engine processes are properly terminated
+  QWebEngineProfile::defaultProfile()->clearAllVisitedLinks();
+  QWebEngineProfile::defaultProfile()->clearHttpCache();
+
+  return result;
 }

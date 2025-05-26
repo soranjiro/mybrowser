@@ -28,6 +28,7 @@ class WebView : public QWebEngineView {
 
 public:
   WebView(QWidget *parent = nullptr);
+  ~WebView();
   void setPage(QWebEnginePage *page); // Allow setting a custom page if needed
 
 public slots:
