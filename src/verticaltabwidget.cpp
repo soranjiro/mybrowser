@@ -636,7 +636,8 @@ bool VerticalTabWidget::eventFilter(QObject *obj, QEvent *event) {
       QPoint localPos = mapFromGlobal(globalPos);
 
       // Show sidebar when mouse is near left edge (0-25 pixels)
-      if (!sidebarVisible && localPos.x() <= 25 && localPos.x() >= 0) {
+      if (!sidebarVisible && localPos.x() <= 25 && localPos.x() >= 0 && 
+          localPos.y() >= 0 && localPos.y() <= height()) {
         showSidebar();
       }
 
@@ -646,12 +647,7 @@ bool VerticalTabWidget::eventFilter(QObject *obj, QEvent *event) {
       }
     }
     // Don't consume mouse button events - let them pass through
-    else if (event->type() == QEvent::MouseButtonPress ||
-             event->type() == QEvent::MouseButtonRelease ||
-             event->type() == QEvent::MouseButtonDblClick) {
-      // Just pass through, don't consume
-      return false;
-    }
+    return false;
   }
 
   if (obj == sidebarWidget) {
@@ -665,11 +661,7 @@ bool VerticalTabWidget::eventFilter(QObject *obj, QEvent *event) {
       }
     }
     // Don't consume mouse button events on sidebar either
-    else if (event->type() == QEvent::MouseButtonPress ||
-             event->type() == QEvent::MouseButtonRelease ||
-             event->type() == QEvent::MouseButtonDblClick) {
-      return false;
-    }
+    return false;
   }
 
   return QWidget::eventFilter(obj, event);

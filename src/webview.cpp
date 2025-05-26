@@ -125,24 +125,9 @@ bool WebView::event(QEvent *event) {
     return gestureEvent(static_cast<QGestureEvent *>(event));
   }
 
-  // Ensure mouse events are properly handled on macOS
-  if (event->type() == QEvent::MouseButtonPress ||
-      event->type() == QEvent::MouseButtonRelease ||
-      event->type() == QEvent::MouseButtonDblClick) {
-    QMouseEvent *mouseEvent = static_cast<QMouseEvent *>(event);
-
-    // Accept the event to ensure it's processed
-    mouseEvent->accept();
-
-    // Call the base implementation
-    bool result = QWebEngineView::event(event);
-
-    // Force focus on mouse click
-    if (event->type() == QEvent::MouseButtonPress) {
-      setFocus(Qt::MouseFocusReason);
-    }
-
-    return result;
+  // Force focus on mouse click for better responsiveness
+  if (event->type() == QEvent::MouseButtonPress) {
+    setFocus(Qt::MouseFocusReason);
   }
 
   return QWebEngineView::event(event);
@@ -206,14 +191,14 @@ void WebView::showDevTools() {
     if (page()) {
       page()->setDevToolsPage(nullptr);
     }
-  });
+  }, Qt::QueuedConnection);
 
   // Update title when page title changes
   connect(page(), &QWebEnginePage::titleChanged, this, [this](const QString &title) {
     if (devToolsView) {
       devToolsView->setWindowTitle("開発者ツール - " + title);
     }
-  });
+  }, Qt::QueuedConnection);
 
   devToolsView->show();
   qDebug() << "Developer tools opened";
