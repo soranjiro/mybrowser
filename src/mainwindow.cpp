@@ -1,5 +1,6 @@
 #include "mainwindow.h"
 #include "bookmarkmanager.h"
+#include "quicksearchdialog.h"
 #include "verticaltabwidget.h"
 #include "webview.h"
 #include "workspacemanager.h"
@@ -19,14 +20,26 @@
 #include <QWebEngineHistory>
 
 MainWindow::MainWindow(QWidget *parent)
-    : QMainWindow(parent), workspaceManager(nullptr), bookmarkManager(nullptr) {
+    : QMainWindow(parent), workspaceManager(nullptr), bookmarkManager(nullptr), quickSearchDialog(nullptr) {
   loadStyleSheet();
   setupUI();
   setupConnections();
   newTab(); // Open a default tab
+
+  // Load search history from file
+  loadSearchHistory();
+
+  // Initialize quick search dialog
+  quickSearchDialog = new QuickSearchDialog(this);
+  quickSearchDialog->setSearchHistory(searchHistory);
+  connect(quickSearchDialog, &QuickSearchDialog::searchRequested, this, [this](const QString &query) {
+    handleQuickSearch(query);
+  });
 }
 
 MainWindow::~MainWindow() {
+  // Save search history before destroying
+  saveSearchHistory();
 }
 
 void MainWindow::setupUI() {
@@ -704,28 +717,87 @@ void MainWindow::toggleTabBar() {
 }
 
 void MainWindow::quickSearch() {
-  bool ok;
-  QString searchQuery = QInputDialog::getText(this,
-                                              "Quick Search",
-                                              "Enter search query:",
-                                              QLineEdit::Normal,
-                                              "",
-                                              &ok);
+  if (quickSearchDialog) {
+    quickSearchDialog->setSearchHistory(searchHistory);
+    quickSearchDialog->exec();
+  }
+}
 
-  if (ok && !searchQuery.isEmpty()) {
+void MainWindow::handleQuickSearch(const QString &query) {
+  if (query.isEmpty())
+    return;
+
+  // Add to search history (avoid duplicates)
+  searchHistory.removeAll(query);
+  searchHistory.prepend(query);
+
+  // Keep only last 10 searches
+  if (searchHistory.size() > 10) {
+    searchHistory.removeLast();
+  }
+
+  // Update quick search dialog with new history
+  if (quickSearchDialog) {
+    quickSearchDialog->setSearchHistory(searchHistory);
+  }
+
+  QString urlString;
+
+  // Check if it's a URL
+  if (query.startsWith("http://") || query.startsWith("https://")) {
+    urlString = query;
+  } else if (query.contains(".") && !query.contains(" ") && query.indexOf(".") > 0) {
+    // Looks like a domain, add https://
+    urlString = "https://" + query;
+  } else {
     // Create Google search URL
-    QString googleSearchUrl = QString("https://www.google.com/search?q=%1")
-                                  .arg(QUrl::toPercentEncoding(searchQuery).constData());
+    urlString = QString("https://www.google.com/search?q=%1")
+                    .arg(QUrl::toPercentEncoding(query).constData());
+  }
 
-    // Load in current tab or create new tab if none exists
-    WebView *view = currentWebView();
-    if (!view) {
-      newTab();
-      view = currentWebView();
+  // Load in current tab or create new tab if none exists
+  WebView *view = currentWebView();
+  if (!view) {
+    newTab();
+    view = currentWebView();
+  }
+
+  if (view) {
+    view->setUrl(QUrl(urlString));
+  }
+}
+
+void MainWindow::saveSearchHistory() {
+  QDir appDir = QDir::home();
+  if (!appDir.exists(".mybrowser")) {
+    appDir.mkdir(".mybrowser");
+  }
+
+  QString historyPath = appDir.absoluteFilePath(".mybrowser/search_history.txt");
+  QFile file(historyPath);
+
+  if (file.open(QIODevice::WriteOnly | QIODevice::Text)) {
+    QTextStream out(&file);
+    for (const QString &entry : searchHistory) {
+      out << entry << "\n";
     }
+  }
+}
 
-    if (view) {
-      view->load(QUrl(googleSearchUrl));
+void MainWindow::loadSearchHistory() {
+  QDir appDir = QDir::home();
+  QString historyPath = appDir.absoluteFilePath(".mybrowser/search_history.txt");
+  QFile file(historyPath);
+
+  searchHistory.clear();
+
+  if (file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+    QTextStream in(&file);
+    while (!in.atEnd()) {
+      QString line = in.readLine().trimmed();
+      if (!line.isEmpty()) {
+        searchHistory.append(line);
+      }
     }
   }
 }

@@ -18,6 +18,7 @@ class WebView;
 class VerticalTabWidget;
 class WorkspaceManager;
 class BookmarkManager;
+class QuickSearchDialog;
 
 class MainWindow : public QMainWindow {
   Q_OBJECT
@@ -51,6 +52,7 @@ private slots:
   void showDevTools();
   void quickSearch();
   void toggleTabBar();
+  void handleQuickSearch(const QString &query);
 
 private:
   void setupUI();
@@ -104,6 +106,14 @@ private:
   // Placeholder for bookmarks and history
   QList<QPair<QString, QUrl>> bookmarks;
   QList<QPair<QString, QUrl>> history;
+
+  // Quick search
+  QuickSearchDialog *quickSearchDialog;
+  QStringList searchHistory;
+
+  // Search history persistence
+  void saveSearchHistory();
+  void loadSearchHistory();
 };
 
 #endif // MAINWINDOW_H

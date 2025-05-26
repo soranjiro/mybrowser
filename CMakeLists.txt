@@ -25,6 +25,8 @@ add_executable(MyBrowser
     src/workspacemanager.h
     src/bookmarkmanager.cpp
     src/bookmarkmanager.h
+    src/quicksearchdialog.cpp
+    src/quicksearchdialog.h
     src/ui_constants.h
     resources.qrc
 )
