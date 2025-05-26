@@ -20,6 +20,7 @@ public:
 
 signals:
   void searchRequested(const QString &query);
+  void commandRequested(const QString &command);
 
 protected:
   void keyPressEvent(QKeyEvent *event) override;
@@ -33,9 +34,11 @@ private slots:
 private:
   void setupUI();
   void populateSuggestions(const QString &query);
+  void populateCommands(const QString &query);
   void selectNextSuggestion();
   void selectPreviousSuggestion();
   void executeSearch();
+  void executeCommand(const QString &command);
   void animateResize(int newHeight);
 
   QLineEdit *searchLineEdit;
@@ -46,6 +49,7 @@ private:
   QPropertyAnimation *fadeAnimation;
   QStringList searchHistory;
   QStringList currentSuggestions;
+  QStringList currentCommands;
   int selectedSuggestionIndex;
 };
 

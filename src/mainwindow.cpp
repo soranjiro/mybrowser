@@ -29,11 +29,14 @@ MainWindow::MainWindow(QWidget *parent)
   // Load search history from file
   loadSearchHistory();
 
-  // Initialize quick search dialog
+  // Initialize command palette (quick search dialog)
   quickSearchDialog = new QuickSearchDialog(this);
   quickSearchDialog->setSearchHistory(searchHistory);
   connect(quickSearchDialog, &QuickSearchDialog::searchRequested, this, [this](const QString &query) {
     handleQuickSearch(query);
+  });
+  connect(quickSearchDialog, &QuickSearchDialog::commandRequested, this, [this](const QString &command) {
+    handleCommand(command);
   });
 }
 
@@ -185,8 +188,8 @@ void MainWindow::createActions() {
   devToolsAction = new QAction("Developer Tools", this);
   devToolsAction->setShortcut(QKeySequence("Ctrl+Shift+I"));
 
-  // Quick search action
-  quickSearchAction = new QAction("Quick Search", this);
+  // Command palette action
+  quickSearchAction = new QAction("Command Palette", this);
   quickSearchAction->setShortcut(QKeySequence("Ctrl+T"));
 
   // Toggle panel actions - only keep tab bar toggle with Cmd+S
@@ -799,5 +802,137 @@ void MainWindow::loadSearchHistory() {
         searchHistory.append(line);
       }
     }
+  }
+}
+
+void MainWindow::handleCommand(const QString &command) {
+  QString cmd = command.toLower().trimmed();
+
+  // Navigation commands
+  if (cmd == "new tab" || cmd == "new") {
+    newTab();
+  } else if (cmd == "close tab" || cmd == "close") {
+    closeCurrentTab();
+  } else if (cmd == "reload page" || cmd == "reload" || cmd == "refresh") {
+    reloadPage();
+  } else if (cmd == "hard reload" || cmd == "force reload") {
+    if (WebView *view = currentWebView()) {
+      view->triggerPageAction(QWebEnginePage::ReloadAndBypassCache);
+    }
+  } else if (cmd == "stop loading" || cmd == "stop") {
+    stopLoading();
+  } else if (cmd == "go back" || cmd == "back") {
+    goBack();
+  } else if (cmd == "go forward" || cmd == "forward") {
+    goForward();
+  }
+
+  // Zoom commands
+  else if (cmd == "zoom in" || cmd == "zoom+") {
+    if (WebView *view = currentWebView()) {
+      qreal factor = view->zoomFactor();
+      view->setZoomFactor(factor * 1.25);
+    }
+  } else if (cmd == "zoom out" || cmd == "zoom-") {
+    if (WebView *view = currentWebView()) {
+      qreal factor = view->zoomFactor();
+      view->setZoomFactor(factor * 0.8);
+    }
+  } else if (cmd == "reset zoom" || cmd == "zoom reset") {
+    if (WebView *view = currentWebView()) {
+      view->setZoomFactor(1.0);
+    }
+  }
+
+  // Bookmark commands
+  else if (cmd == "add bookmark" || cmd == "bookmark") {
+    addBookmark();
+  } else if (cmd == "show bookmarks" || cmd == "bookmarks") {
+    showBookmarks();
+  }
+
+  // Workspace commands
+  else if (cmd == "new workspace") {
+    if (workspaceManager) {
+      workspaceManager->createNewWorkspace("New Workspace");
+    }
+  } else if (cmd == "switch workspace") {
+    // Show workspace switcher - this could be enhanced with a list
+    QMessageBox::information(this, "Command Palette", "Workspace switching UI not implemented yet");
+  } else if (cmd == "rename workspace") {
+    if (workspaceManager) {
+      workspaceManager->renameWorkspace(workspaceManager->getCurrentWorkspaceId(), "");
+    }
+  } else if (cmd == "delete workspace") {
+    if (workspaceManager) {
+      workspaceManager->deleteWorkspace(workspaceManager->getCurrentWorkspaceId());
+    }
+  }
+
+  // History and other commands
+  else if (cmd == "show history" || cmd == "history") {
+    showHistory();
+  } else if (cmd == "clear history") {
+    // Clear search history
+    searchHistory.clear();
+    saveSearchHistory();
+    if (quickSearchDialog) {
+      quickSearchDialog->setSearchHistory(searchHistory);
+    }
+    QMessageBox::information(this, "Command Palette", "Search history cleared");
+  } else if (cmd == "show downloads" || cmd == "downloads") {
+    QMessageBox::information(this, "Command Palette", "Downloads view not implemented yet");
+  }
+
+  // Developer tools
+  else if (cmd == "developer tools" || cmd == "devtools" || cmd == "dev tools") {
+    showDevTools();
+  } else if (cmd == "view source" || cmd == "source") {
+    if (WebView *view = currentWebView()) {
+      view->triggerPageAction(QWebEnginePage::ViewSource);
+    }
+  }
+
+  // Page actions
+  else if (cmd == "print page" || cmd == "print") {
+    if (WebView *view = currentWebView()) {
+      // Qt 6 WebEngine doesn't have PrintToPdf action
+      QMessageBox::information(this, "Command Palette", "Print functionality not implemented yet");
+    }
+  } else if (cmd == "save page" || cmd == "save") {
+    if (WebView *view = currentWebView()) {
+      view->triggerPageAction(QWebEnginePage::SavePage);
+    }
+  } else if (cmd == "find in page" || cmd == "find") {
+    // This would need a find bar implementation
+    QMessageBox::information(this, "Command Palette", "Find in page not implemented yet");
+  }
+
+  // Window commands
+  else if (cmd == "toggle fullscreen" || cmd == "fullscreen") {
+    if (isFullScreen()) {
+      showNormal();
+    } else {
+      showFullScreen();
+    }
+  } else if (cmd == "show sidebar" || cmd == "sidebar") {
+    if (tabWidget) {
+      tabWidget->showSidebar();
+    }
+  } else if (cmd == "hide sidebar") {
+    if (tabWidget) {
+      tabWidget->hideSidebar();
+    }
+  }
+
+  // Settings
+  else if (cmd == "settings" || cmd == "preferences") {
+    showSettings();
+  }
+
+  // Unknown command
+  else {
+    QMessageBox::information(this, "Command Palette",
+                             QString("Unknown command: %1").arg(command));
   }
 }

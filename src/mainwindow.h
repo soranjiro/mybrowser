@@ -53,6 +53,7 @@ private slots:
   void quickSearch();
   void toggleTabBar();
   void handleQuickSearch(const QString &query);
+  void handleCommand(const QString &command);
 
 private:
   void setupUI();

@@ -164,7 +164,7 @@ void VerticalTabWidget::setupSidebar() {
   // Timer for auto-hide
   hideTimer = new QTimer(this);
   hideTimer->setSingleShot(true);
-  hideTimer->setInterval(1000); // Hide after 1 seconds for better UX
+  hideTimer->setInterval(500); // Hide after 1 seconds for better UX
   connect(hideTimer, &QTimer::timeout, this, &VerticalTabWidget::onSidebarTimerTimeout);
 }
 

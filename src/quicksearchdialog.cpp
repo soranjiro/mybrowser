@@ -71,14 +71,14 @@ void QuickSearchDialog::setupUI() {
 
   // Search icon and title
   QHBoxLayout *titleLayout = new QHBoxLayout();
-  QLabel *searchIcon = new QLabel("🔍");
+  QLabel *searchIcon = new QLabel("⌘");
   searchIcon->setStyleSheet(
       "QLabel {"
       "  font-size: 20px;"
       "  color: rgba(255, 255, 255, 0.8);"
       "}");
 
-  QLabel *titleLabel = new QLabel("Quick Search");
+  QLabel *titleLabel = new QLabel("Command Palette");
   titleLabel->setStyleSheet(
       "QLabel {"
       "  color: rgba(255, 255, 255, 0.9);"
@@ -94,14 +94,15 @@ void QuickSearchDialog::setupUI() {
 
   // Search input field
   searchLineEdit = new QLineEdit();
-  searchLineEdit->setPlaceholderText("Search Google or enter URL...");
+  searchLineEdit->setPlaceholderText("Search Google, enter URL, or type '>' for commands...");
+  searchLineEdit->setMinimumHeight(50); // Set minimum height for better visibility
   searchLineEdit->setStyleSheet(
       "QLineEdit {"
       "  background-color: rgba(255, 255, 255, 0.08);"
       "  border: 2px solid rgba(255, 255, 255, 0.1);"
       "  border-radius: 8px;"
-      "  padding: 12px 16px;"
-      "  font-size: 16px;"
+      "  padding: 2px 2px;" // Increased padding for better appearance
+      "  font-size: 18px;"    // Larger font size
       "  color: white;"
       "  selection-background-color: rgba(0, 122, 255, 0.4);"
       "}"
@@ -151,7 +152,7 @@ void QuickSearchDialog::setupUI() {
   containerLayout->addWidget(suggestionsWidget);
 
   // Add instructions
-  QLabel *instructionLabel = new QLabel("Press Enter to search • ↑↓ to navigate • Esc to cancel");
+  QLabel *instructionLabel = new QLabel("Press Enter to search/execute • ↑↓ to navigate • '>' for commands • Esc to cancel");
   instructionLabel->setStyleSheet(
       "QLabel {"
       "  color: rgba(255, 255, 255, 0.4);"
@@ -163,8 +164,8 @@ void QuickSearchDialog::setupUI() {
 
   mainLayout->addWidget(containerWidget);
 
-  // Set dialog size
-  setFixedSize(500, 120); // Will expand with suggestions
+  // Set dialog size - much larger for command palette
+  setFixedSize(800, 300); // Initial larger size for better visibility
 }
 
 void QuickSearchDialog::keyPressEvent(QKeyEvent *event) {
@@ -223,12 +224,30 @@ void QuickSearchDialog::onTextChanged(const QString &text) {
 void QuickSearchDialog::onSuggestionClicked() {
   if (QListWidgetItem *item = suggestionsWidget->currentItem()) {
     QString suggestion = item->text();
-    // Remove the icon prefix if present
-    if (suggestion.contains(" ")) {
-      suggestion = suggestion.mid(suggestion.indexOf(" ") + 1);
+
+    // Handle different types of suggestions
+    if (suggestion.startsWith("⌘")) {
+      // Command suggestion
+      QString command = suggestion.mid(suggestion.indexOf(" ") + 1);
+      searchLineEdit->setText(">" + command);
+      executeCommand(command);
+    } else if (suggestion.startsWith("🔍") || suggestion.startsWith("🌐") ||
+               suggestion.startsWith("🕒") || suggestion.startsWith("💡")) {
+      // Search suggestion - extract the actual query
+      if (suggestion.contains(" ")) {
+        QString query = suggestion.mid(suggestion.indexOf(" ") + 1);
+        if (query.startsWith("\"") && query.endsWith("\"")) {
+          query = query.mid(1, query.length() - 2);
+        }
+        searchLineEdit->setText(query);
+        emit searchRequested(query);
+        accept();
+      }
+    } else {
+      // Plain suggestion
+      searchLineEdit->setText(suggestion.trimmed());
+      executeSearch();
     }
-    searchLineEdit->setText(suggestion);
-    executeSearch();
   }
 }
 
@@ -239,18 +258,38 @@ void QuickSearchDialog::updateSuggestions() {
 void QuickSearchDialog::populateSuggestions(const QString &query) {
   suggestionsWidget->clear();
   currentSuggestions.clear();
+  currentCommands.clear();
 
   if (query.isEmpty()) {
-    // Show recent searches from history
+    // Show recent searches and common commands
     if (!searchHistory.isEmpty()) {
       suggestionsWidget->addItem("🕒 Recent Searches");
-      for (int i = 0; i < qMin(5, searchHistory.size()); ++i) {
+      for (int i = 0; i < qMin(3, searchHistory.size()); ++i) {
         QString item = QString("   %1").arg(searchHistory.at(i));
         suggestionsWidget->addItem(item);
         currentSuggestions.append(searchHistory.at(i));
       }
     }
+
+    // Show common commands
+    suggestionsWidget->addItem("⌘ Common Commands");
+    QStringList commonCommands = {
+        "> New Tab",
+        "> New Workspace",
+        "> Add Bookmark",
+        "> Close Tab",
+        "> Reload Page"};
+
+    for (const QString &cmd : commonCommands) {
+      suggestionsWidget->addItem(QString("   %1").arg(cmd));
+      currentCommands.append(cmd);
+    }
+
+  } else if (query.startsWith(">")) {
+    // Command mode
+    populateCommands(query.mid(1).trimmed());
   } else {
+    // Search mode
     // Generate search suggestions
     QStringList suggestions;
 
@@ -316,11 +355,11 @@ void QuickSearchDialog::populateSuggestions(const QString &query) {
       fadeAnimation->start();
     }
     int itemHeight = 35;
-    int maxHeight = qMin(200, suggestionsWidget->count() * itemHeight);
-    animateResize(120 + maxHeight + 20);
+    int maxHeight = qMin(250, suggestionsWidget->count() * itemHeight);
+    animateResize(130 + maxHeight + 20);
   } else {
     suggestionsWidget->hide();
-    animateResize(120);
+    animateResize(130);
   }
 }
 
@@ -352,19 +391,100 @@ void QuickSearchDialog::executeSearch() {
   QString query = searchLineEdit->text().trimmed();
 
   // If a suggestion is selected, use that instead
-  if (selectedSuggestionIndex >= 0 && selectedSuggestionIndex < currentSuggestions.size()) {
-    query = currentSuggestions.at(selectedSuggestionIndex);
+  if (selectedSuggestionIndex >= 0) {
+    if (query.startsWith(">") || !currentCommands.isEmpty()) {
+      // Command mode
+      QString command;
+      if (selectedSuggestionIndex < currentCommands.size()) {
+        command = currentCommands.at(selectedSuggestionIndex);
+      } else {
+        command = query;
+      }
+      executeCommand(command);
+    } else {
+      // Search mode
+      if (selectedSuggestionIndex < currentSuggestions.size()) {
+        query = currentSuggestions.at(selectedSuggestionIndex);
+      }
+      emit searchRequested(query);
+    }
+  } else {
+    // No suggestion selected, use raw query
+    if (query.startsWith(">")) {
+      executeCommand(query);
+    } else {
+      emit searchRequested(query);
+    }
+  }
+  accept();
+}
+
+void QuickSearchDialog::populateCommands(const QString &query) {
+  QStringList allCommands = {
+      "New Tab",
+      "New Window",
+      "Close Tab",
+      "Close Window",
+      "Reload Page",
+      "Hard Reload",
+      "Stop Loading",
+      "Go Back",
+      "Go Forward",
+      "Zoom In",
+      "Zoom Out",
+      "Reset Zoom",
+      "Add Bookmark",
+      "Show Bookmarks",
+      "New Workspace",
+      "Switch Workspace",
+      "Rename Workspace",
+      "Delete Workspace",
+      "Show History",
+      "Clear History",
+      "Show Downloads",
+      "Developer Tools",
+      "View Source",
+      "Print Page",
+      "Save Page",
+      "Find in Page",
+      "Toggle Fullscreen",
+      "Show Sidebar",
+      "Hide Sidebar"};
+
+  // Filter commands based on query
+  QStringList matchingCommands;
+  if (query.isEmpty()) {
+    matchingCommands = allCommands.mid(0, 10); // Show first 10 commands
+  } else {
+    for (const QString &cmd : allCommands) {
+      if (cmd.contains(query, Qt::CaseInsensitive)) {
+        matchingCommands.append(cmd);
+        if (matchingCommands.size() >= 10)
+          break;
+      }
+    }
   }
 
-  if (!query.isEmpty()) {
-    emit searchRequested(query);
-    accept();
+  // Add commands to suggestions
+  for (const QString &cmd : matchingCommands) {
+    QString displayText = QString("⌘ %1").arg(cmd);
+    suggestionsWidget->addItem(displayText);
+    currentCommands.append(cmd);
   }
+}
+
+void QuickSearchDialog::executeCommand(const QString &command) {
+  QString cmd = command;
+  if (cmd.startsWith(">")) {
+    cmd = cmd.mid(1).trimmed();
+  }
+
+  emit commandRequested(cmd);
 }
 
 void QuickSearchDialog::animateResize(int newHeight) {
   QSize currentSize = size();
-  QSize newSize(500, newHeight);
+  QSize newSize(800, newHeight); // Updated width for command palette
 
   if (currentSize == newSize) {
     return; // No change needed
