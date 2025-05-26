@@ -4,19 +4,23 @@
 #include "webview.h"
 #include "workspacemanager.h"
 #include <QCursor>
+#include <QDir>
 #include <QDockWidget>
+#include <QFile>
 #include <QHBoxLayout>
 #include <QInputDialog>
 #include <QMenu>
 #include <QMenuBar>
 #include <QMessageBox>
 #include <QTabBar>
+#include <QTextStream>
 #include <QToolButton>
 #include <QVBoxLayout>
 #include <QWebEngineHistory>
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent), workspaceManager(nullptr), bookmarkManager(nullptr) {
+  loadStyleSheet();
   setupUI();
   setupConnections();
   newTab(); // Open a default tab
@@ -28,6 +32,7 @@ MainWindow::~MainWindow() {
 void MainWindow::setupUI() {
   // Create vertical tab widget
   tabWidget = new VerticalTabWidget(this);
+  tabWidget->setTabsClosable(true); // Enable close buttons on tabs
 
   // Create managers
   workspaceManager = new WorkspaceManager(this);
@@ -37,40 +42,102 @@ void MainWindow::setupUI() {
 
   addressBar = new QLineEdit(this);
   addressBar->setPlaceholderText("Enter URL or search query");
+  addressBar->setStyleSheet(
+      "QLineEdit { "
+      "  padding: 10px 15px; "
+      "  margin: 5px; "
+      "  background-color: white; "
+      "  border: 2px solid #d1d5db; "
+      "  border-radius: 8px; "
+      "  font-size: 14px; "
+      "} "
+      "QLineEdit:focus { "
+      "  border-color: #007ACC; "
+      "  outline: none; "
+      "}");
 
   createActions();
   createToolbars();
   createMenus();
 
-  // Create main layout with workspace toolbar and vertical tabs
-  QWidget *centralWidget = new QWidget(this);
-  QVBoxLayout *mainLayout = new QVBoxLayout(centralWidget);
-  mainLayout->setContentsMargins(0, 0, 0, 0);
-  mainLayout->setSpacing(0);
+  // Style the menu bar
+  menuBar()->setStyleSheet(
+      "QMenuBar { "
+      "  background-color: #2d2d30; "
+      "  color: white; "
+      "  padding: 4px; "
+      "  font-size: 13px; "
+      "} "
+      "QMenuBar::item { "
+      "  background-color: transparent; "
+      "  padding: 8px 12px; "
+      "  border-radius: 4px; "
+      "} "
+      "QMenuBar::item:selected { "
+      "  background-color: #007ACC; "
+      "} "
+      "QMenu { "
+      "  background-color: #2d2d30; "
+      "  color: white; "
+      "  border: 1px solid #3e3e42; "
+      "  padding: 4px; "
+      "} "
+      "QMenu::item { "
+      "  padding: 8px 20px; "
+      "  border-radius: 4px; "
+      "} "
+      "QMenu::item:selected { "
+      "  background-color: #007ACC; "
+      "} "
+      "QMenu::separator { "
+      "  height: 1px; "
+      "  background-color: #3e3e42; "
+      "  margin: 4px 8px; "
+      "}");
 
-  // Add workspace toolbar at the top
-  QWidget *workspaceToolbar = workspaceManager->createWorkspaceToolbar(this);
-  mainLayout->addWidget(workspaceToolbar);
+  // Configure tab widget for overlay mode
+  tabWidget->setWorkspaceManager(workspaceManager);
+  tabWidget->setBookmarkManager(bookmarkManager);
+  tabWidget->setAddressBar(addressBar);
 
-  // Add navigation toolbar
-  mainLayout->addWidget(navigationToolBar);
-  mainLayout->addWidget(addressBar);
+  // Set tab widget as central widget for full-screen display
+  setCentralWidget(tabWidget);
 
-  // Add vertical tab widget
-  mainLayout->addWidget(tabWidget);
+  // Hide traditional UI elements for overlay mode
+  navigationToolBar->hide();
+  addressBar->hide();
 
-  setCentralWidget(centralWidget);
-
-  // Setup bookmark dock
-  QDockWidget *bookmarkDock = bookmarkManager->createBookmarkDock(this);
+  // Keep bookmark dock hidden by default (will be integrated into sidebar)
+  bookmarkDock = bookmarkManager->createBookmarkDock(this);
   addDockWidget(Qt::RightDockWidgetArea, bookmarkDock);
+  bookmarkDock->hide();
 
   // Create status bar
   statusLabel = new QLabel("Ready");
   progressBar = new QProgressBar();
   progressBar->setVisible(false);
-  this->statusBar()->addWidget(statusLabel);
-  this->statusBar()->addPermanentWidget(progressBar);
+  progressBar->setStyleSheet(
+      "QProgressBar { "
+      "  border: 1px solid #d1d5db; "
+      "  border-radius: 4px; "
+      "  text-align: center; "
+      "  font-size: 12px; "
+      "} "
+      "QProgressBar::chunk { "
+      "  background-color: #007ACC; "
+      "  border-radius: 3px; "
+      "}");
+
+  statusBar()->setStyleSheet(
+      "QStatusBar { "
+      "  background-color: #f8f9fa; "
+      "  border-top: 1px solid #d1d5db; "
+      "  color: #495057; "
+      "  font-size: 12px; "
+      "}");
+
+  statusBar()->addWidget(statusLabel);
+  statusBar()->addPermanentWidget(progressBar);
 
   setWindowTitle("MyBrowser");
   resize(1024, 768);
@@ -105,11 +172,48 @@ void MainWindow::createActions() {
   devToolsAction = new QAction("Developer Tools", this);
   devToolsAction->setShortcut(QKeySequence("Ctrl+Shift+I"));
 
+  // Toggle panel actions
+  toggleBookmarkPanelAction = new QAction("Toggle Sidebar", this);
+  toggleBookmarkPanelAction->setShortcut(QKeySequence("Ctrl+B"));
+  toggleBookmarkPanelAction->setCheckable(true);
+  toggleBookmarkPanelAction->setChecked(false); // Default to hidden
+
+  toggleTabBarAction = new QAction("Toggle Sidebar", this);
+  toggleTabBarAction->setShortcut(QKeySequence("Ctrl+T"));
+  toggleTabBarAction->setCheckable(true);
+  toggleTabBarAction->setChecked(false); // Default to hidden
+
   openLinkInNewTabAction = new QAction("Open Link in New Tab", this);
 }
 
 void MainWindow::createToolbars() {
   navigationToolBar = addToolBar("Navigation");
+  navigationToolBar->setStyleSheet(
+      "QToolBar { "
+      "  background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1, "
+      "    stop: 0 #f8f9fa, stop: 1 #e9ecef); "
+      "  border-bottom: 1px solid #d1d5db; "
+      "  spacing: 8px; "
+      "  padding: 5px; "
+      "} "
+      "QToolButton { "
+      "  background-color: #007ACC; "
+      "  border: none; "
+      "  border-radius: 6px; "
+      "  padding: 8px; "
+      "  margin: 2px; "
+      "  color: white; "
+      "} "
+      "QToolButton:hover { "
+      "  background-color: #005a9e; "
+      "} "
+      "QToolButton:pressed { "
+      "  background-color: #004578; "
+      "} "
+      "QToolButton:disabled { "
+      "  background-color: #6c757d; "
+      "  color: #adb5bd; "
+      "}");
   navigationToolBar->addAction(backAction);
   navigationToolBar->addAction(forwardAction);
   navigationToolBar->addAction(reloadAction);
@@ -150,6 +254,12 @@ void MainWindow::createMenus() {
   });
 
   QMenu *viewMenu = menuBar()->addMenu("&View");
+
+  // Add toggle actions to view menu
+  viewMenu->addAction(toggleBookmarkPanelAction);
+  viewMenu->addAction(toggleTabBarAction);
+  viewMenu->addSeparator();
+
   QAction *zoomInAction = viewMenu->addAction("Zoom &In");
   zoomInAction->setShortcut(QKeySequence::ZoomIn);
   connect(zoomInAction, &QAction::triggered, this, [this]() {
@@ -172,6 +282,10 @@ void MainWindow::createMenus() {
       view->setZoomFactor(1.0);
     }
   });
+
+  viewMenu->addSeparator();
+  viewMenu->addAction(toggleBookmarkPanelAction);
+  viewMenu->addAction(toggleTabBarAction);
 
   QMenu *historyMenu = menuBar()->addMenu("&History");
   historyMenu->addAction(viewHistoryAction);
@@ -215,7 +329,11 @@ void MainWindow::setupConnections() {
     }
   });
 
+  connect(tabWidget, &VerticalTabWidget::newTabRequested, this, &MainWindow::newTab);
+
+  // Connect address bar and integrated address bar
   connect(addressBar, &QLineEdit::returnPressed, this, &MainWindow::goToUrl);
+  connect(tabWidget, &VerticalTabWidget::addressBarReturnPressed, this, &MainWindow::goToUrl);
 
   connect(newTabAction, &QAction::triggered, this, &MainWindow::newTab);
   connect(closeTabAction, &QAction::triggered, this, &MainWindow::closeCurrentTab);
@@ -229,6 +347,9 @@ void MainWindow::setupConnections() {
   connect(viewHistoryAction, &QAction::triggered, this, &MainWindow::showHistory);
   connect(settingsAction, &QAction::triggered, this, &MainWindow::showSettings);
   connect(devToolsAction, &QAction::triggered, this, &MainWindow::showDevTools);
+
+  connect(toggleBookmarkPanelAction, &QAction::triggered, this, &MainWindow::toggleBookmarkPanel);
+  connect(toggleTabBarAction, &QAction::triggered, this, &MainWindow::toggleTabBar);
 
   connect(openLinkInNewTabAction, &QAction::triggered, this, &MainWindow::openLinkInNewTab);
 
@@ -296,7 +417,22 @@ void MainWindow::closeCurrentTab() {
 
 void MainWindow::goToUrl() {
   if (WebView *view = currentWebView()) {
-    QString urlString = addressBar->text();
+    // Get URL text from appropriate address bar
+    QString urlString;
+
+    // Check if the signal is coming from the integrated address bar
+    QObject *signalSender = sender();
+    if (signalSender == tabWidget) {
+      // Get text from integrated address bar in the sidebar
+      QLineEdit *integratedBar = tabWidget->getIntegratedAddressBar();
+      if (integratedBar) {
+        urlString = integratedBar->text();
+      }
+    } else {
+      // Get text from main address bar
+      urlString = addressBar->text();
+    }
+
     if (urlString.isEmpty())
       return;
 
@@ -338,7 +474,13 @@ void MainWindow::stopLoading() {
 
 void MainWindow::updateAddressBar(const QUrl &url) {
   if (tabWidget->currentWidget() == sender() || (currentWebView() && currentWebView()->url() == url)) {
+    // Update both address bars
     addressBar->setText(url.toString());
+
+    QLineEdit *integratedBar = tabWidget->getIntegratedAddressBar();
+    if (integratedBar) {
+      integratedBar->setText(url.toString());
+    }
   }
   if (WebView *view = currentWebView()) { // Update history navigation buttons
     backAction->setEnabled(view->page()->history()->canGoBack());
@@ -536,4 +678,37 @@ void MainWindow::showDevTools() {
 void MainWindow::closeEvent(QCloseEvent *event) {
   // Save bookmarks, history, settings here before closing
   QMainWindow::closeEvent(event);
+}
+
+void MainWindow::loadStyleSheet() {
+  QFile file(":/styles/styles.qss");
+  if (!file.exists()) {
+    // Fallback to file system
+    file.setFileName(QDir::currentPath() + "/styles/styles.qss");
+  }
+
+  if (file.open(QFile::ReadOnly | QFile::Text)) {
+    QTextStream stream(&file);
+    QString styleSheet = stream.readAll();
+    setStyleSheet(styleSheet);
+    file.close();
+  }
+}
+
+void MainWindow::toggleBookmarkPanel() {
+  // In overlay mode, this toggles the sidebar visibility
+  if (tabWidget) {
+    if (tabWidget->isSidebarVisible()) {
+      tabWidget->hideSidebar();
+      toggleBookmarkPanelAction->setChecked(false);
+    } else {
+      tabWidget->showSidebar();
+      toggleBookmarkPanelAction->setChecked(true);
+    }
+  }
+}
+
+void MainWindow::toggleTabBar() {
+  // In overlay mode, this also toggles the sidebar since tabs are in the sidebar
+  toggleBookmarkPanel();
 }

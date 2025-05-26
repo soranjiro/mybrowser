@@ -32,31 +32,115 @@ void WorkspaceManager::setTabWidget(VerticalTabWidget *widget) {
 
 QWidget *WorkspaceManager::createWorkspaceToolbar(QWidget *parent) {
   QWidget *toolbar = new QWidget(parent);
-  toolbar->setStyleSheet("QWidget { background-color: #f8f8f8; border-bottom: 1px solid #ddd; padding: 5px; }");
+  toolbar->setStyleSheet(
+      "QWidget { "
+      "  background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1, "
+      "    stop: 0 #f8f9fa, stop: 1 #e9ecef); "
+      "  border-bottom: 2px solid #007ACC; "
+      "  padding: 8px; "
+      "}");
 
   QHBoxLayout *layout = new QHBoxLayout(toolbar);
-  layout->setContentsMargins(10, 5, 10, 5);
+  layout->setContentsMargins(15, 8, 15, 8);
+  layout->setSpacing(12);
 
-  // Workspace selector
+  // Workspace label
+  QLabel *label = new QLabel("Workspace:", toolbar);
+  label->setStyleSheet(
+      "QLabel { "
+      "  color: #2d2d30; "
+      "  font-weight: bold; "
+      "  font-size: 14px; "
+      "}");
+  layout->addWidget(label);
+
+  // Workspace selector - improved styling
   workspaceComboBox = new QComboBox(toolbar);
-  workspaceComboBox->setMinimumWidth(150);
+  workspaceComboBox->setMinimumWidth(180);
+  workspaceComboBox->setStyleSheet(
+      "QComboBox { "
+      "  padding: 8px 12px; "
+      "  background-color: white; "
+      "  border: 2px solid #d1d5db; "
+      "  border-radius: 6px; "
+      "  font-size: 13px; "
+      "  font-weight: 500; "
+      "} "
+      "QComboBox:hover { "
+      "  border-color: #007ACC; "
+      "} "
+      "QComboBox:focus { "
+      "  border-color: #0066cc; "
+      "  outline: none; "
+      "} "
+      "QComboBox::drop-down { "
+      "  border: none; "
+      "  padding-right: 8px; "
+      "} "
+      "QComboBox::down-arrow { "
+      "  image: none; "
+      "  border: 2px solid #6b7280; "
+      "  border-radius: 2px; "
+      "  width: 8px; height: 8px; "
+      "  border-top: none; "
+      "  border-right: none; "
+      "}");
   connect(workspaceComboBox, QOverload<int>::of(&QComboBox::currentIndexChanged),
           this, &WorkspaceManager::onWorkspaceChanged);
   layout->addWidget(workspaceComboBox);
 
-  // Workspace management buttons
-  newWorkspaceButton = new QPushButton("New", toolbar);
+  // Workspace management buttons with improved styling
+  QString buttonStyle =
+      "QPushButton { "
+      "  padding: 8px 16px; "
+      "  background-color: #007ACC; "
+      "  color: white; "
+      "  border: none; "
+      "  border-radius: 6px; "
+      "  font-weight: bold; "
+      "  font-size: 12px; "
+      "  min-width: 70px; "
+      "} "
+      "QPushButton:hover { "
+      "  background-color: #005a9e; "
+      "} "
+      "QPushButton:pressed { "
+      "  background-color: #004578; "
+      "}";
+
+  QString dangerButtonStyle =
+      "QPushButton { "
+      "  padding: 8px 16px; "
+      "  background-color: #dc3545; "
+      "  color: white; "
+      "  border: none; "
+      "  border-radius: 6px; "
+      "  font-weight: bold; "
+      "  font-size: 12px; "
+      "  min-width: 70px; "
+      "} "
+      "QPushButton:hover { "
+      "  background-color: #c82333; "
+      "} "
+      "QPushButton:pressed { "
+      "  background-color: #bd2130; "
+      "}";
+
+  newWorkspaceButton = new QPushButton("+ New", toolbar);
   newWorkspaceButton->setToolTip("Create new workspace");
+  newWorkspaceButton->setStyleSheet(buttonStyle);
   connect(newWorkspaceButton, &QPushButton::clicked, this, &WorkspaceManager::onNewWorkspaceClicked);
   layout->addWidget(newWorkspaceButton);
 
   renameWorkspaceButton = new QPushButton("Rename", toolbar);
   renameWorkspaceButton->setToolTip("Rename current workspace");
+  renameWorkspaceButton->setStyleSheet(buttonStyle);
   connect(renameWorkspaceButton, &QPushButton::clicked, this, &WorkspaceManager::onRenameWorkspaceClicked);
   layout->addWidget(renameWorkspaceButton);
 
   deleteWorkspaceButton = new QPushButton("Delete", toolbar);
   deleteWorkspaceButton->setToolTip("Delete current workspace");
+  deleteWorkspaceButton->setStyleSheet(dangerButtonStyle);
   connect(deleteWorkspaceButton, &QPushButton::clicked, this, &WorkspaceManager::onDeleteWorkspaceClicked);
   layout->addWidget(deleteWorkspaceButton);
 

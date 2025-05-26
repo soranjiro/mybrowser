@@ -25,6 +25,8 @@ add_executable(MyBrowser
     src/workspacemanager.h
     src/bookmarkmanager.cpp
     src/bookmarkmanager.h
+    src/ui_constants.h
+    resources.qrc
 )
 
 # Add this line to explicitly include directories for WebEngineCore and WebEngineWidgets

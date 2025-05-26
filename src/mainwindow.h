@@ -49,10 +49,13 @@ private slots:
   void showHistory();
   void showSettings();
   void showDevTools();
+  void toggleBookmarkPanel();
+  void toggleTabBar();
 
 private:
   void setupUI();
   void setupConnections();
+  void loadStyleSheet();
   void createActions();
   void createMenus();
   void createToolbars();
@@ -65,6 +68,9 @@ private:
   // Managers
   WorkspaceManager *workspaceManager;
   BookmarkManager *bookmarkManager;
+
+  // Dock widgets for panels
+  QDockWidget *bookmarkDock;
 
   // Status bar components
   QProgressBar *progressBar;
@@ -81,6 +87,10 @@ private:
   QAction *viewHistoryAction;
   QAction *settingsAction;
   QAction *devToolsAction;
+
+  // Toggle actions for panels
+  QAction *toggleBookmarkPanelAction;
+  QAction *toggleTabBarAction;
 
   // For context menu
   QAction *openLinkInNewTabAction;
