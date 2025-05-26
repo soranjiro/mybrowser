@@ -49,7 +49,7 @@ private slots:
   void showHistory();
   void showSettings();
   void showDevTools();
-  void toggleBookmarkPanel();
+  void quickSearch();
   void toggleTabBar();
 
 private:
@@ -88,8 +88,10 @@ private:
   QAction *settingsAction;
   QAction *devToolsAction;
 
+  // Quick search action
+  QAction *quickSearchAction;
+
   // Toggle actions for panels
-  QAction *toggleBookmarkPanelAction;
   QAction *toggleTabBarAction;
 
   // For context menu

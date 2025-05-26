@@ -6,6 +6,7 @@
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QListWidgetItem>
+#include <QMouseEvent>
 #include <QPropertyAnimation>
 #include <QResizeEvent>
 #include <QStyle>
@@ -16,8 +17,16 @@
 VerticalTabWidget::VerticalTabWidget(QWidget *parent)
     : QWidget(parent), tabsClosable(false), movable(false),
       sidebarVisible(false), workspaceManager(nullptr), bookmarkManager(nullptr) {
+  // Enable mouse tracking for hover detection
+  setMouseTracking(true);
+
   setupUI();
   setupSidebar();
+
+  // Install event filter on parent for global mouse tracking
+  if (parent) {
+    parent->installEventFilter(this);
+  }
 }
 
 VerticalTabWidget::~VerticalTabWidget() {
@@ -560,10 +569,10 @@ void VerticalTabWidget::onSidebarTimerTimeout() {
 void VerticalTabWidget::enterEvent(QEnterEvent *event) {
   Q_UNUSED(event)
 
-  // Check if mouse is on the left edge (first 20 pixels when sidebar is hidden)
+  // Check if mouse is on the left edge (first 25 pixels when sidebar is hidden)
   if (!sidebarVisible) {
     QPoint mousePos = mapFromGlobal(QCursor::pos());
-    if (mousePos.x() <= 20) {
+    if (mousePos.x() <= 25) {
       showSidebar();
     }
   }
@@ -583,6 +592,22 @@ void VerticalTabWidget::leaveEvent(QEvent *event) {
   }
 }
 
+void VerticalTabWidget::mouseMoveEvent(QMouseEvent *event) {
+  QWidget::mouseMoveEvent(event);
+
+  QPoint mousePos = event->pos();
+
+  // Show sidebar when mouse is near left edge (0-25 pixels)
+  if (!sidebarVisible && mousePos.x() <= 25) {
+    showSidebar();
+  }
+
+  // Hide sidebar when mouse moves right of sidebar area (> 300 pixels)
+  if (sidebarVisible && mousePos.x() > 300) {
+    hideTimer->start();
+  }
+}
+
 void VerticalTabWidget::resizeEvent(QResizeEvent *event) {
   QWidget::resizeEvent(event);
 
@@ -593,6 +618,25 @@ void VerticalTabWidget::resizeEvent(QResizeEvent *event) {
 }
 
 bool VerticalTabWidget::eventFilter(QObject *obj, QEvent *event) {
+  if (obj == parent()) {
+    // Filter mouse move events on the parent window
+    if (event->type() == QEvent::MouseMove) {
+      QMouseEvent *mouseEvent = static_cast<QMouseEvent *>(event);
+      QPoint globalPos = mouseEvent->globalPosition().toPoint();
+      QPoint localPos = mapFromGlobal(globalPos);
+
+      // Show sidebar when mouse is near left edge (0-25 pixels)
+      if (!sidebarVisible && localPos.x() <= 25 && localPos.x() >= 0) {
+        showSidebar();
+      }
+
+      // Hide sidebar when mouse moves significantly right of sidebar
+      if (sidebarVisible && localPos.x() > 320) {
+        hideTimer->start();
+      }
+    }
+  }
+
   if (obj == sidebarWidget) {
     if (event->type() == QEvent::Enter) {
       // Mouse entered sidebar, stop hide timer
@@ -604,5 +648,6 @@ bool VerticalTabWidget::eventFilter(QObject *obj, QEvent *event) {
       }
     }
   }
+
   return QWidget::eventFilter(obj, event);
 }

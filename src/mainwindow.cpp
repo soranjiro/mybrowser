@@ -172,14 +172,13 @@ void MainWindow::createActions() {
   devToolsAction = new QAction("Developer Tools", this);
   devToolsAction->setShortcut(QKeySequence("Ctrl+Shift+I"));
 
-  // Toggle panel actions
-  toggleBookmarkPanelAction = new QAction("Toggle Sidebar", this);
-  toggleBookmarkPanelAction->setShortcut(QKeySequence("Ctrl+B"));
-  toggleBookmarkPanelAction->setCheckable(true);
-  toggleBookmarkPanelAction->setChecked(false); // Default to hidden
+  // Quick search action
+  quickSearchAction = new QAction("Quick Search", this);
+  quickSearchAction->setShortcut(QKeySequence("Ctrl+T"));
 
+  // Toggle panel actions - only keep tab bar toggle with Cmd+S
   toggleTabBarAction = new QAction("Toggle Sidebar", this);
-  toggleTabBarAction->setShortcut(QKeySequence("Ctrl+T"));
+  toggleTabBarAction->setShortcut(QKeySequence("Ctrl+S"));
   toggleTabBarAction->setCheckable(true);
   toggleTabBarAction->setChecked(false); // Default to hidden
 
@@ -256,7 +255,6 @@ void MainWindow::createMenus() {
   QMenu *viewMenu = menuBar()->addMenu("&View");
 
   // Add toggle actions to view menu
-  viewMenu->addAction(toggleBookmarkPanelAction);
   viewMenu->addAction(toggleTabBarAction);
   viewMenu->addSeparator();
 
@@ -284,7 +282,6 @@ void MainWindow::createMenus() {
   });
 
   viewMenu->addSeparator();
-  viewMenu->addAction(toggleBookmarkPanelAction);
   viewMenu->addAction(toggleTabBarAction);
 
   QMenu *historyMenu = menuBar()->addMenu("&History");
@@ -297,6 +294,8 @@ void MainWindow::createMenus() {
   // Dynamically populate bookmark items or show a dialog
 
   QMenu *toolsMenu = menuBar()->addMenu("&Tools");
+  toolsMenu->addAction(quickSearchAction);
+  toolsMenu->addSeparator();
   toolsMenu->addAction(settingsAction);
   toolsMenu->addSeparator();
   toolsMenu->addAction(devToolsAction);
@@ -348,7 +347,7 @@ void MainWindow::setupConnections() {
   connect(settingsAction, &QAction::triggered, this, &MainWindow::showSettings);
   connect(devToolsAction, &QAction::triggered, this, &MainWindow::showDevTools);
 
-  connect(toggleBookmarkPanelAction, &QAction::triggered, this, &MainWindow::toggleBookmarkPanel);
+  connect(quickSearchAction, &QAction::triggered, this, &MainWindow::quickSearch);
   connect(toggleTabBarAction, &QAction::triggered, this, &MainWindow::toggleTabBar);
 
   connect(openLinkInNewTabAction, &QAction::triggered, this, &MainWindow::openLinkInNewTab);
@@ -695,20 +694,38 @@ void MainWindow::loadStyleSheet() {
   }
 }
 
-void MainWindow::toggleBookmarkPanel() {
-  // In overlay mode, this toggles the sidebar visibility
-  if (tabWidget) {
-    if (tabWidget->isSidebarVisible()) {
-      tabWidget->hideSidebar();
-      toggleBookmarkPanelAction->setChecked(false);
-    } else {
-      tabWidget->showSidebar();
-      toggleBookmarkPanelAction->setChecked(true);
-    }
+void MainWindow::toggleTabBar() {
+  // In overlay mode, this toggles the sidebar since tabs are in the sidebar
+  if (tabWidget->isSidebarVisible()) {
+    tabWidget->hideSidebar();
+  } else {
+    tabWidget->showSidebar();
   }
 }
 
-void MainWindow::toggleTabBar() {
-  // In overlay mode, this also toggles the sidebar since tabs are in the sidebar
-  toggleBookmarkPanel();
+void MainWindow::quickSearch() {
+  bool ok;
+  QString searchQuery = QInputDialog::getText(this,
+                                              "Quick Search",
+                                              "Enter search query:",
+                                              QLineEdit::Normal,
+                                              "",
+                                              &ok);
+
+  if (ok && !searchQuery.isEmpty()) {
+    // Create Google search URL
+    QString googleSearchUrl = QString("https://www.google.com/search?q=%1")
+                                  .arg(QUrl::toPercentEncoding(searchQuery).constData());
+
+    // Load in current tab or create new tab if none exists
+    WebView *view = currentWebView();
+    if (!view) {
+      newTab();
+      view = currentWebView();
+    }
+
+    if (view) {
+      view->load(QUrl(googleSearchUrl));
+    }
+  }
 }

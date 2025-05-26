@@ -73,6 +73,7 @@ protected:
   void enterEvent(QEnterEvent *event) override;
   void leaveEvent(QEvent *event) override;
   void resizeEvent(QResizeEvent *event) override;
+  void mouseMoveEvent(QMouseEvent *event) override;
   bool eventFilter(QObject *obj, QEvent *event) override;
 
 private:
