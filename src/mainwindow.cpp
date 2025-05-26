@@ -685,11 +685,7 @@ void MainWindow::showSettings() {
 
 void MainWindow::showDevTools() {
   if (WebView *view = currentWebView()) {
-    // For Qt WebEngine, developer tools can be shown in a separate window
-    QWebEnginePage *page = view->page();
-    page->setDevToolsPage(new QWebEnginePage(this));
-    // Note: In a full implementation, you'd want to show this in a separate window or dock widget
-    QMessageBox::information(this, "Developer Tools", "Developer tools functionality requires additional implementation for Qt WebEngine.");
+    view->showDevTools();
   }
 }
 

@@ -1,7 +1,11 @@
 #include "webview.h"
 #include "mainwindow.h" // To potentially access MainWindow for new tab creation logic
+#include <QAction>
 #include <QApplication>
+#include <QContextMenuEvent>
 #include <QDebug>
+#include <QKeyEvent>
+#include <QMenu>
 #include <QWebEngineSettings>
 
 // Custom page implementation
@@ -25,7 +29,7 @@ void CustomWebEnginePage::javaScriptConsoleMessage(JavaScriptConsoleMessageLevel
   qDebug() << QString("JS Console [%1]: %2 (line %3 in %4)").arg(levelString, message).arg(lineNumber).arg(sourceID);
 }
 
-WebView::WebView(QWidget *parent) : QWebEngineView(parent) {
+WebView::WebView(QWidget *parent) : QWebEngineView(parent), devToolsView(nullptr) {
   // Use custom page to capture JavaScript console messages
   CustomWebEnginePage *customPage = new CustomWebEnginePage(QWebEngineProfile::defaultProfile(), this);
   setPage(customPage);
@@ -51,10 +55,21 @@ WebView::WebView(QWidget *parent) : QWebEngineView(parent) {
   grabGesture(Qt::SwipeGesture);
 
   // Enable right-click context menu with "Inspect Element" option
-  setContextMenuPolicy(Qt::DefaultContextMenu);
+  setContextMenuPolicy(Qt::CustomContextMenu);
+  connect(this, &WebView::customContextMenuRequested, this,
+          [this](const QPoint &pos) {
+            QContextMenuEvent event(QContextMenuEvent::Mouse, pos, mapToGlobal(pos));
+            contextMenuEvent(&event);
+          });
 }
 
 void WebView::setPage(QWebEnginePage *page) {
+  // Close existing developer tools if open
+  if (devToolsView) {
+    devToolsView->close();
+    devToolsView = nullptr;
+  }
+
   QWebEngineView::setPage(page);
 
   // Ensure JavaScript is enabled for any new page
@@ -126,4 +141,86 @@ void WebView::swipeTriggered(QSwipeGesture *gesture) {
       }
     }
   }
+}
+
+void WebView::showDevTools() {
+  // Show developer tools for the current page
+  if (!page()) {
+    qDebug() << "No page available for developer tools";
+    return;
+  }
+
+  // If developer tools are already open, bring to front
+  if (devToolsView) {
+    devToolsView->raise();
+    devToolsView->activateWindow();
+    return;
+  }
+
+  // Create developer tools page and view
+  QWebEnginePage *devToolsPage = new QWebEnginePage(QWebEngineProfile::defaultProfile(), this);
+  devToolsView = new QWebEngineView();
+  devToolsView->setPage(devToolsPage);
+
+  // Set the dev tools page for the current page
+  page()->setDevToolsPage(devToolsPage);
+
+  // Configure the developer tools window
+  devToolsView->setWindowTitle("開発者ツール - " + page()->title());
+  devToolsView->setWindowIcon(this->window()->windowIcon());
+  devToolsView->resize(1200, 800);
+  devToolsView->setAttribute(Qt::WA_DeleteOnClose);
+
+  // Clean up when developer tools window is closed
+  connect(devToolsView, &QObject::destroyed, this, [this]() {
+    devToolsView = nullptr;
+    if (page()) {
+      page()->setDevToolsPage(nullptr);
+    }
+  });
+
+  // Update title when page title changes
+  connect(page(), &QWebEnginePage::titleChanged, this, [this](const QString &title) {
+    if (devToolsView) {
+      devToolsView->setWindowTitle("開発者ツール - " + title);
+    }
+  });
+
+  devToolsView->show();
+  qDebug() << "Developer tools opened";
+}
+
+void WebView::keyPressEvent(QKeyEvent *event) {
+  // Handle F12 or Ctrl+Shift+I to open developer tools
+  if (event->key() == Qt::Key_F12 ||
+      (event->modifiers() == (Qt::ControlModifier | Qt::ShiftModifier) && event->key() == Qt::Key_I)) {
+    showDevTools();
+    return;
+  }
+
+  QWebEngineView::keyPressEvent(event);
+}
+
+void WebView::contextMenuEvent(QContextMenuEvent *event) {
+  QMenu *menu = new QMenu(this);
+
+  // Add basic navigation actions
+  QAction *backAction = menu->addAction("戻る");
+  backAction->setEnabled(page() && page()->history()->canGoBack());
+  connect(backAction, &QAction::triggered, [this]() { page()->history()->back(); });
+
+  QAction *forwardAction = menu->addAction("進む");
+  forwardAction->setEnabled(page() && page()->history()->canGoForward());
+  connect(forwardAction, &QAction::triggered, [this]() { page()->history()->forward(); });
+
+  QAction *reloadAction = menu->addAction("再読み込み");
+  connect(reloadAction, &QAction::triggered, [this]() { page()->triggerAction(QWebEnginePage::Reload); });
+
+  menu->addSeparator();
+
+  // Add developer tools action
+  QAction *inspectAction = menu->addAction("要素を検証");
+  connect(inspectAction, &QAction::triggered, this, &WebView::showDevTools);
+
+  menu->popup(event->globalPos());
 }

@@ -5,6 +5,9 @@
 #include <QWebEngineSettings> // Add this line
 
 int main(int argc, char *argv[]) {
+  // Enable developer tools remote debugging before QApplication creation
+  qputenv("QTWEBENGINE_REMOTE_DEBUGGING", "9222");
+
   QApplication a(argc, argv);
 
   // Configure WebEngine settings for full JavaScript support

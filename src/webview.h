@@ -1,7 +1,11 @@
 #ifndef WEBVIEW_H
 #define WEBVIEW_H
 
+#include <QAction>
+#include <QContextMenuEvent>
 #include <QGestureEvent>
+#include <QKeyEvent>
+#include <QMenu>
 #include <QSwipeGesture>
 #include <QWebEngineHistory>
 #include <QWebEnginePage>
@@ -26,11 +30,19 @@ public:
   WebView(QWidget *parent = nullptr);
   void setPage(QWebEnginePage *page); // Allow setting a custom page if needed
 
+public slots:
+  void showDevTools(); // Show developer tools
+
 protected:
   QWebEngineView *createWindow(QWebEnginePage::WebWindowType type) override;
   bool event(QEvent *event) override;
   bool gestureEvent(QGestureEvent *event);
   void swipeTriggered(QSwipeGesture *gesture);
+  void keyPressEvent(QKeyEvent *event) override;
+  void contextMenuEvent(QContextMenuEvent *event) override;
+
+private:
+  QWebEngineView *devToolsView; // Developer tools window
 
 signals:
   // Forward signals from QWebEnginePage if needed, or connect directly in MainWindow
