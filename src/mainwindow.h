@@ -32,6 +32,7 @@ public:
 
 protected:
   void closeEvent(QCloseEvent *event) override;
+  void resizeEvent(QResizeEvent *event) override; // 追加
 
 private slots:
   void closeCurrentTab();
@@ -54,6 +55,7 @@ private slots:
   void toggleTabBar();
   void handleQuickSearch(const QString &query);
   void handleCommand(const QString &command);
+  void adjustStatusWidgetsGeometry(); // 追加
 
 private:
   void setupUI();
@@ -77,7 +79,6 @@ private:
 
   // Status bar components
   QProgressBar *progressBar;
-  QLabel *statusLabel;
 
   QAction *newTabAction;
   QAction *closeTabAction;

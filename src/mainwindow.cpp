@@ -128,32 +128,29 @@ void MainWindow::setupUI() {
   addDockWidget(Qt::RightDockWidgetArea, bookmarkDock);
   bookmarkDock->hide();
 
-  // Create status bar
-  statusLabel = new QLabel("Ready");
-  progressBar = new QProgressBar();
-  progressBar->setVisible(false);
+  // Create status widgets directly as children of MainWindow
+  progressBar = new QProgressBar(this);
   progressBar->setStyleSheet(
       "QProgressBar { "
-      "  border: 1px solid #d1d5db; "
-      "  border-radius: 4px; "
+      "  border: 1px solid black; "
+      "  border-radius: 3px; "
       "  text-align: center; "
-      "  font-size: 12px; "
+      "  font-size: 10px; "
+      "  background-color: white; "
+      "  color: black; "
       "} "
       "QProgressBar::chunk { "
-      "  background-color: #007ACC; "
-      "  border-radius: 3px; "
+      "  background-color: black; "
+      "  width: 10px; " // Adjust chunk appearance if needed
       "}");
+  progressBar->setVisible(false);
+  progressBar->setMaximumHeight(15);
+  progressBar->setTextVisible(false);
 
-  statusBar()->setStyleSheet(
-      "QStatusBar { "
-      "  background-color: #f8f9fa; "
-      "  border-top: 1px solid #d1d5db; "
-      "  color: #495057; "
-      "  font-size: 12px; "
-      "}");
-
-  statusBar()->addWidget(statusLabel);
-  statusBar()->addPermanentWidget(progressBar);
+  // Remove QStatusBar related code
+  // statusBar()->setStyleSheet(...);
+  // statusBar()->addWidget(statusLabel); // 削除
+  // statusBar()->addPermanentWidget(progressBar);
 
   setWindowTitle("MyBrowser");
   resize(1024, 768);
@@ -521,13 +518,19 @@ void MainWindow::updateWindowTitle(const QString &title) {
 void MainWindow::handleLoadProgress(int progress) {
   if (tabWidget->currentWidget() == sender()) {
     if (progress > 0 && progress < 100) {
-      progressBar->setVisible(true);
+      // statusLabel->setText(QString("Loading... %1%").arg(progress)); // 削除
       progressBar->setValue(progress);
-      statusLabel->setText(QString("Loading... %1%").arg(progress));
+      // statusLabel->setVisible(true); // 削除
+      progressBar->setVisible(true);
     } else if (progress == 100) {
+      // statusLabel->setText("Ready"); // 削除
       progressBar->setVisible(false);
-      statusLabel->setText("Ready");
+      // statusLabel->setVisible(false); // 削除
+    } else { // progress == 0 or other cases
+      // statusLabel->setVisible(false); // 削除
+      progressBar->setVisible(false);
     }
+    adjustStatusWidgetsGeometry(); // Adjust geometry when visibility changes
   }
 }
 
@@ -935,4 +938,44 @@ void MainWindow::handleCommand(const QString &command) {
     QMessageBox::information(this, "Command Palette",
                              QString("Unknown command: %1").arg(command));
   }
+}
+
+void MainWindow::resizeEvent(QResizeEvent *event) {
+  QMainWindow::resizeEvent(event);
+  adjustStatusWidgetsGeometry();
+}
+
+void MainWindow::adjustStatusWidgetsGeometry() {
+  if (!progressBar)
+    return; // statusLabelのチェックを削除
+
+  int barWidth = 150;
+  int barHeight = 5; // より細くする
+  // int labelWidth = 150; // 削除
+  // int labelHeight = 20; // 削除
+  // int spacing = 5; // 削除
+
+  // int totalWidth = labelWidth + spacing + barWidth; // 修正
+  // if (!progressBar->isVisible()) { // 修正
+  //   totalWidth = labelWidth; // 修正
+  // }
+  // if (!statusLabel->isVisible()){ // 削除
+  //     totalWidth = barWidth; // 削除
+  // }
+  if (!progressBar->isVisible()) { // statusLabelのチェックを削除
+    return;
+  }
+
+  // int xPos = (width() - totalWidth) / 2; // 修正
+  int xPos = (width() - barWidth) / 2; // progressBarのみなので修正
+  int yPos = 10;                       // Small margin from the top
+
+  // if (statusLabel->isVisible() && progressBar->isVisible()){ // 削除
+  //   statusLabel->setGeometry(xPos, yPos, labelWidth, labelHeight); // 削除
+  //   progressBar->setGeometry(xPos + labelWidth + spacing, yPos + (labelHeight - barHeight)/2, barWidth, barHeight); // 削除
+  // } else if (statusLabel->isVisible()){ // 削除
+  //   statusLabel->setGeometry((width() - labelWidth) / 2, yPos, labelWidth, labelHeight); // 削除
+  // } else if (progressBar->isVisible()){ // 修正
+  progressBar->setGeometry(xPos, yPos, barWidth, barHeight); // progressBarのみなので修正
+  // }
 }
