@@ -28,6 +28,21 @@ QuickSearchDialog::QuickSearchDialog(QWidget *parent)
   fadeAnimation = new QPropertyAnimation();
   fadeAnimation->setDuration(150);
   fadeAnimation->setEasingCurve(QEasingCurve::OutCubic);
+
+  // Install event filter on parent to detect clicks outside the dialog
+  if (parent) {
+    parent->installEventFilter(this);
+  }
+  // Also install on the application to catch global clicks
+  QApplication::instance()->installEventFilter(this);
+}
+
+QuickSearchDialog::~QuickSearchDialog() {
+  // Remove event filters
+  if (parent()) {
+    parent()->removeEventFilter(this);
+  }
+  QApplication::instance()->removeEventFilter(this);
 }
 
 QString QuickSearchDialog::getSearchQuery() const {
@@ -102,7 +117,7 @@ void QuickSearchDialog::setupUI() {
       "  border: 2px solid rgba(255, 255, 255, 0.1);"
       "  border-radius: 8px;"
       "  padding: 2px 2px;" // Increased padding for better appearance
-      "  font-size: 18px;"    // Larger font size
+      "  font-size: 18px;"  // Larger font size
       "  color: white;"
       "  selection-background-color: rgba(0, 122, 255, 0.4);"
       "}"
@@ -147,7 +162,8 @@ void QuickSearchDialog::setupUI() {
       "}");
 
   connect(suggestionsWidget, &QListWidget::itemClicked, this, &QuickSearchDialog::onSuggestionClicked);
-  suggestionsWidget->hide(); // Initially hidden
+  // Always show suggestions widget initially
+  suggestionsWidget->show();
 
   containerLayout->addWidget(suggestionsWidget);
 
@@ -164,8 +180,8 @@ void QuickSearchDialog::setupUI() {
 
   mainLayout->addWidget(containerWidget);
 
-  // Set dialog size - much larger for command palette
-  setFixedSize(800, 300); // Initial larger size for better visibility
+  // Set dialog size - much larger for command palette with always-visible suggestions
+  setFixedSize(800, 450); // Increased height to accommodate always-visible suggestions
 }
 
 void QuickSearchDialog::keyPressEvent(QKeyEvent *event) {
@@ -198,7 +214,6 @@ void QuickSearchDialog::showEvent(QShowEvent *event) {
 
     int x = (screenGeometry.width() - dialogGeometry.width()) / 2;
     int y = screenGeometry.height() / 4; // Position at 1/4 from top like Spotlight
-
     move(x, y);
   }
 
@@ -206,8 +221,10 @@ void QuickSearchDialog::showEvent(QShowEvent *event) {
   searchLineEdit->setFocus();
   searchLineEdit->selectAll();
 
-  // Show some default suggestions
+  // Always show suggestions (even when empty)
   populateSuggestions("");
+  // Ensure suggestions are always visible
+  suggestionsWidget->show();
 }
 
 void QuickSearchDialog::onTextChanged(const QString &text) {
@@ -285,6 +302,21 @@ void QuickSearchDialog::populateSuggestions(const QString &query) {
       currentCommands.append(cmd);
     }
 
+    // If no history, show default suggestions
+    if (searchHistory.isEmpty()) {
+      suggestionsWidget->addItem("💡 Popular Suggestions");
+      QStringList defaultSuggestions = {
+          "   GitHub",
+          "   YouTube",
+          "   Google Drive",
+          "   Stack Overflow"};
+
+      for (const QString &suggestion : defaultSuggestions) {
+        suggestionsWidget->addItem(suggestion);
+        currentSuggestions.append(suggestion.trimmed());
+      }
+    }
+
   } else if (query.startsWith(">")) {
     // Command mode
     populateCommands(query.mid(1).trimmed());
@@ -339,27 +371,21 @@ void QuickSearchDialog::populateSuggestions(const QString &query) {
     }
   }
 
-  // Show/hide suggestions widget and adjust dialog size
-  if (suggestionsWidget->count() > 0) {
-    if (!suggestionsWidget->isVisible()) {
-      suggestionsWidget->show();
-      // Set initial opacity for fade-in effect
-      QGraphicsOpacityEffect *effect = new QGraphicsOpacityEffect();
-      effect->setOpacity(0.0);
-      suggestionsWidget->setGraphicsEffect(effect);
+  // Always ensure suggestions widget is visible
+  if (!suggestionsWidget->isVisible()) {
+    suggestionsWidget->show();
+  }
 
-      fadeAnimation->setTargetObject(effect);
-      fadeAnimation->setPropertyName("opacity");
-      fadeAnimation->setStartValue(0.0);
-      fadeAnimation->setEndValue(1.0);
-      fadeAnimation->start();
-    }
-    int itemHeight = 35;
-    int maxHeight = qMin(250, suggestionsWidget->count() * itemHeight);
-    animateResize(130 + maxHeight + 20);
-  } else {
-    suggestionsWidget->hide();
-    animateResize(130);
+  // Adjust dialog size based on content
+  int itemHeight = 35;
+  int minItems = 6; // Minimum items to always show
+  int actualItems = qMax(minItems, suggestionsWidget->count());
+  int maxHeight = qMin(300, actualItems * itemHeight);
+
+  // Only animate if there's a significant change
+  int targetHeight = 180 + maxHeight; // Base height + suggestions height
+  if (abs(height() - targetHeight) > 20) {
+    animateResize(targetHeight);
   }
 }
 
@@ -493,4 +519,20 @@ void QuickSearchDialog::animateResize(int newHeight) {
   resizeAnimation->setStartValue(currentSize);
   resizeAnimation->setEndValue(newSize);
   resizeAnimation->start();
+}
+
+// Event filter to handle clicks outside the dialog
+bool QuickSearchDialog::eventFilter(QObject *object, QEvent *event) {
+  if (event->type() == QEvent::MouseButtonPress) {
+    QMouseEvent *mouseEvent = static_cast<QMouseEvent *>(event);
+
+    // Check if the click is outside the dialog
+    if (!geometry().contains(mouseEvent->globalPosition().toPoint())) {
+      // Click was outside the dialog, close it
+      reject();
+      return true;
+    }
+  }
+
+  return QDialog::eventFilter(object, event);
 }

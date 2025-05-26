@@ -3,9 +3,11 @@
 
 #include <QCompleter>
 #include <QDialog>
+#include <QEvent>
 #include <QKeyEvent>
 #include <QLineEdit>
 #include <QListWidget>
+#include <QMouseEvent>
 #include <QPropertyAnimation>
 #include <QTimer>
 #include <QVBoxLayout>
@@ -15,6 +17,7 @@ class QuickSearchDialog : public QDialog {
 
 public:
   explicit QuickSearchDialog(QWidget *parent = nullptr);
+  ~QuickSearchDialog(); // Add destructor
   QString getSearchQuery() const;
   void setSearchHistory(const QStringList &history);
 
@@ -25,6 +28,7 @@ signals:
 protected:
   void keyPressEvent(QKeyEvent *event) override;
   void showEvent(QShowEvent *event) override;
+  bool eventFilter(QObject *object, QEvent *event) override;
 
 private slots:
   void onTextChanged(const QString &text);
