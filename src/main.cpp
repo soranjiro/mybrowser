@@ -8,7 +8,17 @@ int main(int argc, char *argv[]) {
   // Enable developer tools remote debugging before QApplication creation
   qputenv("QTWEBENGINE_REMOTE_DEBUGGING", "9222");
 
+  // macOS specific settings for better trackpad/mouse handling
+#ifdef Q_OS_MACOS
+  qputenv("QT_MAC_WANTS_LAYER", "1");
+  qputenv("QT_ENABLE_HIGHDPI_SCALING", "1");
+#endif
+
   QApplication a(argc, argv);
+
+  // Improve mouse/trackpad responsiveness on macOS
+  a.setAttribute(Qt::AA_SynthesizeMouseForUnhandledTouchEvents, true);
+  a.setAttribute(Qt::AA_SynthesizeTouchForUnhandledMouseEvents, false);
 
   // Configure WebEngine settings for full JavaScript support
   QWebEngineProfile *defaultProfile = QWebEngineProfile::defaultProfile();

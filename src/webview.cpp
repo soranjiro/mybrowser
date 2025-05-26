@@ -34,6 +34,13 @@ WebView::WebView(QWidget *parent) : QWebEngineView(parent), devToolsView(nullptr
   CustomWebEnginePage *customPage = new CustomWebEnginePage(QWebEngineProfile::defaultProfile(), this);
   setPage(customPage);
 
+  // Improve mouse/click responsiveness
+  setAttribute(Qt::WA_AcceptTouchEvents, true);
+  setFocusPolicy(Qt::StrongFocus);
+
+  // Enable mouse tracking for better responsiveness
+  setMouseTracking(true);
+
   // Ensure JavaScript is enabled for this page
   QWebEngineSettings *pageSettings = customPage->settings();
   pageSettings->setAttribute(QWebEngineSettings::JavascriptEnabled, true);
@@ -113,9 +120,31 @@ QWebEngineView *WebView::createWindow(QWebEnginePage::WebWindowType type) {
 }
 
 bool WebView::event(QEvent *event) {
+  // Handle gesture events
   if (event->type() == QEvent::Gesture) {
     return gestureEvent(static_cast<QGestureEvent *>(event));
   }
+
+  // Ensure mouse events are properly handled on macOS
+  if (event->type() == QEvent::MouseButtonPress ||
+      event->type() == QEvent::MouseButtonRelease ||
+      event->type() == QEvent::MouseButtonDblClick) {
+    QMouseEvent *mouseEvent = static_cast<QMouseEvent *>(event);
+
+    // Accept the event to ensure it's processed
+    mouseEvent->accept();
+
+    // Call the base implementation
+    bool result = QWebEngineView::event(event);
+
+    // Force focus on mouse click
+    if (event->type() == QEvent::MouseButtonPress) {
+      setFocus(Qt::MouseFocusReason);
+    }
+
+    return result;
+  }
+
   return QWebEngineView::event(event);
 }
 

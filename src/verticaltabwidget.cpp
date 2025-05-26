@@ -20,12 +20,17 @@ VerticalTabWidget::VerticalTabWidget(QWidget *parent)
   // Enable mouse tracking for hover detection
   setMouseTracking(true);
 
+  // Improve mouse/click responsiveness
+  setAttribute(Qt::WA_AcceptTouchEvents, true);
+  setFocusPolicy(Qt::StrongFocus);
+
   setupUI();
   setupSidebar();
 
   // Install event filter on parent for global mouse tracking
   if (parent) {
     parent->installEventFilter(this);
+    parent->setMouseTracking(true);
   }
 }
 
@@ -117,7 +122,12 @@ void VerticalTabWidget::setupSidebar() {
       "  background-color: rgba(255, 255, 255, 0.16); "
       "  border-color: rgba(0, 122, 204, 0.8); "
       "}");
-  connect(newTabButton, &QPushButton::clicked, this, &VerticalTabWidget::onNewTabClicked);
+
+  // Improve button responsiveness
+  newTabButton->setFocusPolicy(Qt::StrongFocus);
+  newTabButton->setAttribute(Qt::WA_AcceptTouchEvents, true);
+
+  connect(newTabButton, &QPushButton::clicked, this, &VerticalTabWidget::onNewTabClicked, Qt::QueuedConnection);
   tabListLayout->addWidget(newTabButton);
 
   // Tab list
@@ -635,6 +645,13 @@ bool VerticalTabWidget::eventFilter(QObject *obj, QEvent *event) {
         hideTimer->start();
       }
     }
+    // Don't consume mouse button events - let them pass through
+    else if (event->type() == QEvent::MouseButtonPress ||
+             event->type() == QEvent::MouseButtonRelease ||
+             event->type() == QEvent::MouseButtonDblClick) {
+      // Just pass through, don't consume
+      return false;
+    }
   }
 
   if (obj == sidebarWidget) {
@@ -646,6 +663,12 @@ bool VerticalTabWidget::eventFilter(QObject *obj, QEvent *event) {
       if (sidebarVisible) {
         hideTimer->start();
       }
+    }
+    // Don't consume mouse button events on sidebar either
+    else if (event->type() == QEvent::MouseButtonPress ||
+             event->type() == QEvent::MouseButtonRelease ||
+             event->type() == QEvent::MouseButtonDblClick) {
+      return false;
     }
   }
 

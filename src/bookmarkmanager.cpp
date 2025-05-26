@@ -55,6 +55,17 @@ void BookmarkManager::setupUI() {
   deleteButton = new QPushButton("Delete");
   renameButton = new QPushButton("Rename");
 
+  // Improve button responsiveness on macOS
+  addBookmarkButton->setFocusPolicy(Qt::StrongFocus);
+  addFolderButton->setFocusPolicy(Qt::StrongFocus);
+  deleteButton->setFocusPolicy(Qt::StrongFocus);
+  renameButton->setFocusPolicy(Qt::StrongFocus);
+
+  addBookmarkButton->setAttribute(Qt::WA_AcceptTouchEvents, true);
+  addFolderButton->setAttribute(Qt::WA_AcceptTouchEvents, true);
+  deleteButton->setAttribute(Qt::WA_AcceptTouchEvents, true);
+  renameButton->setAttribute(Qt::WA_AcceptTouchEvents, true);
+
   addBookmarkButton->setToolTip("Add new bookmark");
   addFolderButton->setToolTip("Add new folder");
   deleteButton->setToolTip("Delete selected item");
@@ -78,17 +89,21 @@ void BookmarkManager::setupUI() {
   treeWidget->header()->setStretchLastSection(true);
   treeWidget->header()->resizeSection(0, 200);
 
+  // Improve tree widget responsiveness
+  treeWidget->setFocusPolicy(Qt::StrongFocus);
+  treeWidget->setAttribute(Qt::WA_AcceptTouchEvents, true);
+
   layout->addWidget(treeWidget);
 
   dockWidget->setWidget(widget);
 
-  // Connect signals
-  connect(addBookmarkButton, &QPushButton::clicked, this, &BookmarkManager::onAddBookmarkClicked);
-  connect(addFolderButton, &QPushButton::clicked, this, &BookmarkManager::onAddFolderClicked);
-  connect(deleteButton, &QPushButton::clicked, this, &BookmarkManager::onDeleteItemClicked);
-  connect(renameButton, &QPushButton::clicked, this, &BookmarkManager::onRenameItemClicked);
-  connect(treeWidget, &QTreeWidget::itemDoubleClicked, this, &BookmarkManager::onBookmarkDoubleClicked);
-  connect(treeWidget, &QTreeWidget::customContextMenuRequested, this, &BookmarkManager::onBookmarkContextMenu);
+  // Connect signals with Qt::QueuedConnection for better responsiveness
+  connect(addBookmarkButton, &QPushButton::clicked, this, &BookmarkManager::onAddBookmarkClicked, Qt::QueuedConnection);
+  connect(addFolderButton, &QPushButton::clicked, this, &BookmarkManager::onAddFolderClicked, Qt::QueuedConnection);
+  connect(deleteButton, &QPushButton::clicked, this, &BookmarkManager::onDeleteItemClicked, Qt::QueuedConnection);
+  connect(renameButton, &QPushButton::clicked, this, &BookmarkManager::onRenameItemClicked, Qt::QueuedConnection);
+  connect(treeWidget, &QTreeWidget::itemDoubleClicked, this, &BookmarkManager::onBookmarkDoubleClicked, Qt::QueuedConnection);
+  connect(treeWidget, &QTreeWidget::customContextMenuRequested, this, &BookmarkManager::onBookmarkContextMenu, Qt::QueuedConnection);
 }
 
 void BookmarkManager::setupContextMenu() {

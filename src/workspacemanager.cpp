@@ -129,19 +129,34 @@ QWidget *WorkspaceManager::createWorkspaceToolbar(QWidget *parent) {
   newWorkspaceButton = new QPushButton("+ New", toolbar);
   newWorkspaceButton->setToolTip("Create new workspace");
   newWorkspaceButton->setStyleSheet(buttonStyle);
-  connect(newWorkspaceButton, &QPushButton::clicked, this, &WorkspaceManager::onNewWorkspaceClicked);
+
+  // Improve button responsiveness
+  newWorkspaceButton->setFocusPolicy(Qt::StrongFocus);
+  newWorkspaceButton->setAttribute(Qt::WA_AcceptTouchEvents, true);
+
+  connect(newWorkspaceButton, &QPushButton::clicked, this, &WorkspaceManager::onNewWorkspaceClicked, Qt::QueuedConnection);
   layout->addWidget(newWorkspaceButton);
 
   renameWorkspaceButton = new QPushButton("Rename", toolbar);
   renameWorkspaceButton->setToolTip("Rename current workspace");
   renameWorkspaceButton->setStyleSheet(buttonStyle);
-  connect(renameWorkspaceButton, &QPushButton::clicked, this, &WorkspaceManager::onRenameWorkspaceClicked);
+
+  // Improve button responsiveness
+  renameWorkspaceButton->setFocusPolicy(Qt::StrongFocus);
+  renameWorkspaceButton->setAttribute(Qt::WA_AcceptTouchEvents, true);
+
+  connect(renameWorkspaceButton, &QPushButton::clicked, this, &WorkspaceManager::onRenameWorkspaceClicked, Qt::QueuedConnection);
   layout->addWidget(renameWorkspaceButton);
 
   deleteWorkspaceButton = new QPushButton("Delete", toolbar);
   deleteWorkspaceButton->setToolTip("Delete current workspace");
   deleteWorkspaceButton->setStyleSheet(dangerButtonStyle);
-  connect(deleteWorkspaceButton, &QPushButton::clicked, this, &WorkspaceManager::onDeleteWorkspaceClicked);
+
+  // Improve button responsiveness
+  deleteWorkspaceButton->setFocusPolicy(Qt::StrongFocus);
+  deleteWorkspaceButton->setAttribute(Qt::WA_AcceptTouchEvents, true);
+
+  connect(deleteWorkspaceButton, &QPushButton::clicked, this, &WorkspaceManager::onDeleteWorkspaceClicked, Qt::QueuedConnection);
   layout->addWidget(deleteWorkspaceButton);
 
   layout->addStretch();
