@@ -31,17 +31,28 @@ add_executable(MyBrowser
     src/main.cpp
     src/mainwindow.cpp
     src/mainwindow.h
-    src/webview.cpp
-    src/webview.h
-    src/verticaltabwidget.cpp
-    src/verticaltabwidget.h
-    src/workspacemanager.cpp
-    src/workspacemanager.h
-    src/bookmarkmanager.cpp
-    src/bookmarkmanager.h
-    src/quicksearchdialog.cpp
-    src/quicksearchdialog.h
-    src/ui_constants.h
+
+    # UI Components
+    src/ui/webview.cpp
+    src/ui/webview.h
+    src/ui/verticaltabwidget.cpp
+    src/ui/verticaltabwidget.h
+    src/ui/commandpalettedialog.cpp
+    src/ui/commandpalettedialog.h
+
+    # Manager Classes
+    src/managers/workspacemanager.cpp
+    src/managers/workspacemanager.h
+    src/managers/bookmarkmanager.cpp
+    src/managers/bookmarkmanager.h
+    src/managers/pictureinpicturemanager.cpp
+    src/managers/pictureinpicturemanager.h
+    src/managers/commandpalettemanager.cpp
+    src/managers/commandpalettemanager.h
+
+    # Core
+    src/core/ui_constants.h
+
     resources.qrc
 )
 

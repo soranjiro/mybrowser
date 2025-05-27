@@ -497,6 +497,7 @@ void QuickSearchDialog::populateCommands(const QString &query) {
       "Clear History",
       "Show Downloads",
       "Developer Tools",
+      "Picture-in-Picture",
       "View Source",
       "Print Page",
       "Save Page",

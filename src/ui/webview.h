@@ -36,7 +36,7 @@ public:
   void setPage(QWebEnginePage *page); // Allow setting a custom page if needed
 
 public slots:
-  void showDevTools();            // Show developer tools
+  void showDevTools(); // Show developer tools
   void requestPictureInPicture(); // Request Picture-in-Picture mode
 
 protected:

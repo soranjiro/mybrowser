@@ -1,5 +1,5 @@
 #include "webview.h"
-#include "mainwindow.h" // To potentially access MainWindow for new tab creation logic
+#include "../mainwindow.h" // To potentially access MainWindow for new tab creation logic
 #include <QAction>
 #include <QApplication>
 #include <QContextMenuEvent>

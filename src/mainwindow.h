@@ -18,7 +18,8 @@ class WebView;
 class VerticalTabWidget;
 class WorkspaceManager;
 class BookmarkManager;
-class QuickSearchDialog;
+class PictureInPictureManager;
+class CommandPaletteManager;
 
 class MainWindow : public QMainWindow {
   Q_OBJECT
@@ -30,31 +31,41 @@ public:
   void newTab();                   // Make this public so WebView can access it
   WebView *currentWebView() const; // Make this public too
 
+  // Manager accessors
+  WorkspaceManager *getWorkspaceManager() const { return workspaceManager; }
+  VerticalTabWidget *getTabWidget() const { return tabWidget; }
+  PictureInPictureManager *getPictureInPictureManager() const { return pictureInPictureManager; }
+  CommandPaletteManager *getCommandPaletteManager() const { return commandPaletteManager; }
+
 protected:
   void closeEvent(QCloseEvent *event) override;
   void resizeEvent(QResizeEvent *event) override; // 追加
 
-private slots:
+public slots:
+  // Public slots that can be called by managers
   void closeCurrentTab();
   void goToUrl();
   void goBack();
   void goForward();
   void reloadPage();
   void stopLoading();
-  void updateAddressBar(const QUrl &url);
-  void updateWindowTitle(const QString &title);
-  void handleLoadProgress(int progress);
-  void handleContextMenuRequested(const QPoint &pos);
-  void openLinkInNewTab();
   void addBookmark();
   void showBookmarks();
   void showHistory();
   void showSettings();
   void showDevTools();
-  void quickSearch();
+
+#ifdef DEBUG_MODE
+  void openTestPage(const QString &fileName);
+#endif
+
+private slots:
+  void updateAddressBar(const QUrl &url);
+  void updateWindowTitle(const QString &title);
+  void handleLoadProgress(int progress);
+  void handleContextMenuRequested(const QPoint &pos);
+  void openLinkInNewTab();
   void toggleTabBar();
-  void handleQuickSearch(const QString &query);
-  void handleCommand(const QString &command);
   void adjustStatusWidgetsGeometry(); // 追加
 
 private:
@@ -73,6 +84,8 @@ private:
   // Managers
   WorkspaceManager *workspaceManager;
   BookmarkManager *bookmarkManager;
+  PictureInPictureManager *pictureInPictureManager;
+  CommandPaletteManager *commandPaletteManager;
 
   // Dock widgets for panels
   QDockWidget *bookmarkDock;
@@ -92,9 +105,6 @@ private:
   QAction *settingsAction;
   QAction *devToolsAction;
 
-  // Quick search action
-  QAction *quickSearchAction;
-
   // Toggle actions for panels
   QAction *toggleTabBarAction;
 
@@ -112,14 +122,6 @@ private:
   // Placeholder for bookmarks and history
   QList<QPair<QString, QUrl>> bookmarks;
   QList<QPair<QString, QUrl>> history;
-
-  // Quick search
-  QuickSearchDialog *quickSearchDialog;
-  QStringList searchHistory;
-
-  // Search history persistence
-  void saveSearchHistory();
-  void loadSearchHistory();
 };
 
 #endif // MAINWINDOW_H

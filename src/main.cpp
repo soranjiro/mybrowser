@@ -33,6 +33,9 @@ int main(int argc, char *argv[]) {
   // Enable developer tools remote debugging before QApplication creation
   qputenv("QTWEBENGINE_REMOTE_DEBUGGING", "9222");
 
+  // Enable Picture-in-Picture API and related features
+  qputenv("QTWEBENGINE_CHROMIUM_FLAGS", "--enable-features=PictureInPictureAPI,MediaSession,MediaSessionService --enable-media-session-service --disable-features=MediaSessionService --enable-picture-in-picture-api");
+
   // macOS specific settings for better trackpad/mouse handling
 #ifdef Q_OS_MACOS
   qputenv("QT_MAC_WANTS_LAYER", "1");

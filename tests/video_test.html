@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Picture-in-Picture テストページ</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            min-height: 100vh;
+        }
+        
+        .container {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        h1 {
+            text-align: center;
+            color: #ffffff;
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+        
+        .subtitle {
+            text-align: center;
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 1.2em;
+            margin-bottom: 30px;
+        }
+        
+        .video-container {
+            margin: 30px 0;
+            text-align: center;
+        }
+        
+        video {
+            width: 100%;
+            max-width: 600px;
+            border-radius: 15px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+            margin: 10px;
+        }
+        
+        .video-title {
+            font-size: 1.3em;
+            margin: 15px 0 10px 0;
+            color: #ffffff;
+        }
+        
+        .controls {
+            margin: 20px 0;
+            text-align: center;
+        }
+        
+        button {
+            background: linear-gradient(45deg, #FF6B6B, #4ECDC4);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 25px;
+            font-size: 16px;
+            cursor: pointer;
+            margin: 10px;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+        }
+        
+        .info {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+            border-left: 4px solid #4ECDC4;
+        }
+        
+        .info h3 {
+            color: #4ECDC4;
+            margin-top: 0;
+        }
+        
+        .info ul {
+            margin-left: 20px;
+        }
+        
+        .info li {
+            margin: 8px 0;
+        }
+        
+        .note {
+            background: rgba(255, 193, 7, 0.2);
+            border: 1px solid rgba(255, 193, 7, 0.5);
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎬 Picture-in-Picture テスト</h1>
+        <p class="subtitle">ブラウザのPiP機能をテストするためのページです</p>
+        
+        <div class="video-container">
+            <h2 class="video-title">テスト動画 1: Big Buck Bunny</h2>
+            <video id="video1" controls preload="metadata" disablepictureinpicture>
+                <source src="https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4" type="video/mp4">
+                <p>お使いのブラウザは動画再生をサポートしていません。</p>
+            </video>
+        </div>
+        
+        <div class="video-container">
+            <h2 class="video-title">テスト動画 2: Elephant Dream</h2>
+            <video id="video2" controls preload="metadata" disablepictureinpicture>
+                <source src="https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4" type="video/mp4">
+                <p>お使いのブラウザは動画再生をサポートしていません。</p>
+            </video>
+        </div>
+        
+        <div class="controls">
+            <button onclick="testPiP('video1')">📺 動画1をPiPで開く</button>
+            <button onclick="testPiP('video2')">📺 動画2をPiPで開く</button>
+            <button onclick="exitPiP()">❌ PiPを終了</button>
+        </div>
+        
+        <div class="info">
+            <h3>📋 テスト手順</h3>
+            <ul>
+                <li><strong>方法1:</strong> Ctrl+P（またはCmd+P）でPiPを切り替え</li>
+                <li><strong>方法2:</strong> 「表示」メニューから「Picture-in-Picture」を選択</li>
+                <li><strong>方法3:</strong> コマンドパレット（Ctrl+K）で「pip」と入力</li>
+                <li><strong>方法4:</strong> 動画を右クリックして「ピクチャーインピクチャー」を選択</li>
+                <li><strong>方法5:</strong> 上記のボタンを使用</li>
+            </ul>
+        </div>
+        
+        <div class="note">
+            <strong>注意:</strong> この動画は元々 <code>disablepictureinpicture</code> 属性が設定されていますが、
+            ブラウザのJavaScript injectionによって自動的に削除され、PiP機能が有効になります。
+        </div>
+        
+        <div class="info">
+            <h3>🔧 実装された機能</h3>
+            <ul>
+                <li>自動的な <code>disablepictureinpicture</code> 属性の削除</li>
+                <li>キーボードショートカット（Ctrl+P）</li>
+                <li>メニューアクセス</li>
+                <li>コマンドパレット対応</li>
+                <li>右クリックコンテキストメニュー</li>
+                <li>動的に追加される動画への対応</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        // Picture-in-Picture用のスクリプト
+        let currentPiPVideo = null;
+
+        async function testPiP(videoId) {
+            const video = document.getElementById(videoId);
+            
+            if (!video) {
+                alert('動画が見つかりません');
+                return;
+            }
+            
+            try {
+                // 動画が再生されていない場合は再生を開始
+                if (video.paused) {
+                    await video.play();
+                }
+                
+                // Picture-in-Pictureをリクエスト
+                if (document.pictureInPictureEnabled && !video.disablePictureInPicture) {
+                    await video.requestPictureInPicture();
+                    currentPiPVideo = video;
+                    console.log('Picture-in-Picture モードが開始されました');
+                } else {
+                    alert('Picture-in-Picture機能が利用できません');
+                }
+            } catch (error) {
+                console.error('PiPエラー:', error);
+                alert('Picture-in-Pictureの開始に失敗しました: ' + error.message);
+            }
+        }
+
+        async function exitPiP() {
+            try {
+                if (document.pictureInPictureElement) {
+                    await document.exitPictureInPicture();
+                    console.log('Picture-in-Picture モードが終了されました');
+                } else {
+                    alert('現在PiPモードではありません');
+                }
+            } catch (error) {
+                console.error('PiP終了エラー:', error);
+                alert('Picture-in-Pictureの終了に失敗しました: ' + error.message);
+            }
+        }
+
+        // PiPイベントリスナー
+        document.addEventListener('enterpictureinpicture', (event) => {
+            console.log('Picture-in-Picture モードに入りました', event.target);
+        });
+
+        document.addEventListener('leavepictureinpicture', (event) => {
+            console.log('Picture-in-Picture モードから退出しました', event.target);
+            currentPiPVideo = null;
+        });
+
+        // ページロード時の初期化
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log('Picture-in-Picture テストページが読み込まれました');
+            console.log('PiP対応:', document.pictureInPictureEnabled);
+            
+            // 動画要素の状態をチェック
+            const videos = document.querySelectorAll('video');
+            videos.forEach((video, index) => {
+                console.log(`動画${index + 1}:`, {
+                    id: video.id,
+                    disablePictureInPicture: video.disablePictureInPicture,
+                    hasDisableAttribute: video.hasAttribute('disablepictureinpicture')
+                });
+            });
+        });
+    </script>
+</body>
+</html>

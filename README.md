@@ -1,22 +1,63 @@
-# MyBrowser - Custom Qt WebEngine Browser
+# MyBrowser - Qt WebEngine Browser
 
-カスタム Qt ブラウザアプリケーションで、革新的なオーバーレイタブバーシステムを搭載しています：
+A modern Qt-based web browser with advanced features including Picture-in-Picture video support, command palette, and workspace management.
 
-## 主な機能
+## Features
 
-### 🎨 オーバーレイタブバーシステム
+- **Picture-in-Picture Video Support**: Automatic PiP controls for video content
+- **Command Palette**: Quick search and command execution (Ctrl+K)
+- **Workspace Management**: Multiple workspace and session support
+- **Advanced Tab Management**: Vertical tab widget with enhanced navigation
+- **Bookmark Management**: Organized bookmark system
+- **Modern UI**: Clean, responsive interface with custom styling
 
-- **フルスクリーン**: デフォルトでサイトが全画面表示
-- **ホバーサイドバー**: 左端にマウスを移動すると統合サイドバーが表示
-- **統合 UI**: アドレスバー、タブ、ワークスペース、ブックマークを一つのサイドバーに統合
+## Project Structure
+
+```
+mybrowser/
+├── src/                     # Source code
+│   ├── main.cpp            # Application entry point
+│   ├── mainwindow.h/cpp    # Main window implementation
+│   ├── core/               # Core utilities and constants
+│   │   └── ui_constants.h
+│   ├── managers/           # Feature managers (separated by concern)
+│   │   ├── bookmarkmanager.h/cpp
+│   │   ├── commandpalettemanager.h/cpp
+│   │   ├── pictureinpicturemanager.h/cpp
+│   │   └── workspacemanager.h/cpp
+│   └── ui/                 # UI components
+│       ├── webview.h/cpp
+│       ├── verticaltabwidget.h/cpp
+│       └── quicksearchdialog.h/cpp
+├── styles/                 # Application stylesheets
+│   └── styles.qss
+├── tests/                  # Test pages and documentation
+│   ├── video_test.html
+│   ├── pip_test.html
+│   ├── pip_integration_test.html
+│   └── README.md
+├── scripts/                # Build scripts
+│   ├── build_debug.sh
+│   ├── build_release.sh
+│   └── README.md
+├── docs/                   # Documentation
+│   ├── README.md
+│   └── images/
+└── build/                  # Build output (generated)
+```
+
+## Architecture
+
+The application follows a manager pattern to separate concerns:
+
 - **自動非表示**: サイドバーは自動的に非表示（マウスがサイドバー上にある間は表示維持）
 - **滑らかなアニメーション**: 250ms のスムーズなスライドアニメーション
 
-| フルスクリーン                                         | タブバー                                 |
-| :--------------------------------------------------: | :--------------------------------------: |
-| ![フルスクリーン](docs/fullscrean.png)                  | ![タブバー](docs/tabbar.png)               |
-| **コマンドパレット**                                      | **開発者ツール**                             |
-| ![コマンドパレット](docs/commandpalette.png)           | ![開発者ツール](docs/developertool.png)      |
+|                フルスクリーン                |                タブバー                 |
+| :------------------------------------------: | :-------------------------------------: |
+|    ![フルスクリーン](docs/fullscrean.png)    |      ![タブバー](docs/tabbar.png)       |
+|             **コマンドパレット**             |            **開発者ツール**             |
+| ![コマンドパレット](docs/commandpalette.png) | ![開発者ツール](docs/developertool.png) |
 
 ### 🔧 UI/UX 機能
 
