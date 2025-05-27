@@ -5,6 +5,7 @@
 #include "managers/workspacemanager.h"
 #include "ui/verticaltabwidget.h"
 #include "ui/webview.h"
+#include <QCoreApplication>
 #include <QCursor>
 #include <QDir>
 #include <QDockWidget>
@@ -811,7 +812,16 @@ void MainWindow::adjustStatusWidgetsGeometry() {
 
 #ifdef DEBUG_MODE
 void MainWindow::openTestPage(const QString &fileName) {
-  QString testsPath = QDir::currentPath() + "/tests/" + fileName;
+  // Get the application directory
+  QString appDir = QCoreApplication::applicationDirPath();
+  QDir projectDir(appDir);
+
+  // Find the project root directory (where tests folder exists)
+  while (!projectDir.exists("tests") && projectDir.cdUp()) {
+    // Move to parent directory
+  }
+
+  QString testsPath = projectDir.absoluteFilePath("tests/" + fileName);
   QUrl fileUrl = QUrl::fromLocalFile(testsPath);
 
   if (QFile::exists(testsPath)) {

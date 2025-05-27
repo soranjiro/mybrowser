@@ -113,7 +113,7 @@ private:
 
   // Placeholder for settings
 #ifdef DEBUG_MODE
-  QString homePageUrl = "file:///Users/user/Documents/03_app/mybrowser/debug_test.html";
+  QString homePageUrl = "file:///Users/user/Documents/03_app/mybrowser/tests/debug_test.html";
 #else
   QString homePageUrl = "https://www.google.com";
 #endif
