@@ -1,0 +1,133 @@
+name: Release Build
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Release version"
+        required: true
+        default: "1.0.0"
+
+jobs:
+  release-build:
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            artifact_name: MyBrowser-Linux
+            asset_name: MyBrowser-Linux-x64
+          - os: macos-latest
+            artifact_name: MyBrowser-macOS
+            asset_name: MyBrowser-macOS-x64
+          - os: windows-latest
+            artifact_name: MyBrowser-Windows
+            asset_name: MyBrowser-Windows-x64.exe
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Qt6 (Ubuntu)
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            qt6-base-dev \
+            qt6-webengine-dev \
+            qt6-webengine-dev-tools \
+            libqt6webenginecore6 \
+            libqt6webenginewidgets6 \
+            cmake build-essential
+
+      - name: Setup Qt6 (macOS)
+        if: matrix.os == 'macos-latest'
+        run: |
+          brew install qt6 cmake
+          echo "/opt/homebrew/opt/qt6/bin" >> $GITHUB_PATH
+
+      - name: Setup Qt6 (Windows)
+        if: matrix.os == 'windows-latest'
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: "6.5.*"
+          host: "windows"
+          target: "desktop"
+          arch: "win64_msvc2019_64"
+          modules: "qtwebengine"
+
+      - name: Build Release
+        run: |
+          mkdir -p build
+          cd build
+          cmake -DCMAKE_BUILD_TYPE=Release ..
+
+      - name: Compile (Ubuntu/macOS)
+        if: matrix.os != 'windows-latest'
+        run: |
+          cd build
+          make -j$(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 4)
+          strip MyBrowser || echo "Strip not available"
+
+      - name: Compile (Windows)
+        if: matrix.os == 'windows-latest'
+        run: |
+          cd build
+          cmake --build . --config Release --parallel
+
+      - name: Package (Ubuntu)
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          cd build
+          cp MyBrowser ${{ matrix.asset_name }}
+          tar -czf ${{ matrix.asset_name }}.tar.gz ${{ matrix.asset_name }}
+
+      - name: Package (macOS)
+        if: matrix.os == 'macos-latest'
+        run: |
+          cd build
+          cp MyBrowser ${{ matrix.asset_name }}
+          zip ${{ matrix.asset_name }}.zip ${{ matrix.asset_name }}
+
+      - name: Package (Windows)
+        if: matrix.os == 'windows-latest'
+        run: |
+          cd build
+          cp Release/MyBrowser.exe ${{ matrix.asset_name }}
+          Compress-Archive -Path ${{ matrix.asset_name }} -DestinationPath ${{ matrix.asset_name }}.zip
+
+      - name: Upload Release Asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ github.event.release.upload_url }}
+          asset_path: build/${{ matrix.asset_name }}.*
+          asset_name: ${{ matrix.asset_name }}
+          asset_content_type: application/octet-stream
+
+  create-checksums:
+    needs: release-build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+
+      - name: Generate checksums
+        run: |
+          echo "## Release Checksums" > checksums.md
+          for file in MyBrowser-*; do
+            if [ -f "$file" ]; then
+              sha256sum "$file" >> checksums.md
+            fi
+          done
+
+      - name: Upload checksums
+        uses: actions/upload-artifact@v4
+        with:
+          name: checksums
+          path: checksums.md

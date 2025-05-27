@@ -1,6 +1,28 @@
 # MyBrowser - Custom Qt WebEngine Browser
 
+![CI Build](https://github.com/USERNAME/mybrowser/workflows/CI%20Build/badge.svg)
+![Quick Check](https://github.com/USERNAME/mybrowser/workflows/Quick%20Build%20Check/badge.svg)
+![Release](https://github.com/USERNAME/mybrowser/workflows/Release%20Build/badge.svg)
+
+> **注意**: 上記のバッジの USERNAME を実際の GitHub ユーザー名に置き換えてください
+
 カスタム Qt ブラウザアプリケーションで、革新的なオーバーレイタブバーシステムを搭載しています：
+
+## 🚀 CI/CD Status
+
+このプロジェクトは継続的インテグレーション (CI) を採用しており、以下の環境で自動ビルドテストを実行しています：
+
+| Platform          | Debug Build | Release Build | Status      |
+| ----------------- | ----------- | ------------- | ----------- |
+| 🐧 Ubuntu Latest  | ✅          | ✅            | Auto-tested |
+| 🍎 macOS Latest   | ✅          | ✅            | Auto-tested |
+| 🪟 Windows Latest | ✅          | ✅            | Auto-tested |
+
+### CI Triggers
+
+- **main ブランチ push**: 全プラットフォームビルドテスト実行
+- **Pull Request**: ビルドテスト + コード品質チェック実行
+- **Release**: 配布用バイナリ自動生成
 
 ## 主な機能
 
@@ -12,11 +34,11 @@
 - **自動非表示**: サイドバーは自動的に非表示（マウスがサイドバー上にある間は表示維持）
 - **滑らかなアニメーション**: 250ms のスムーズなスライドアニメーション
 
-| フルスクリーン                                         | タブバー                                 |
-| :--------------------------------------------------: | :--------------------------------------: |
-| ![フルスクリーン](docs/fullscrean.png)                  | ![タブバー](docs/tabbar.png)               |
-| **コマンドパレット**                                      | **開発者ツール**                             |
-| ![コマンドパレット](docs/commandpalette.png)           | ![開発者ツール](docs/developertool.png)      |
+|                フルスクリーン                |                タブバー                 |
+| :------------------------------------------: | :-------------------------------------: |
+|    ![フルスクリーン](docs/fullscrean.png)    |      ![タブバー](docs/tabbar.png)       |
+|             **コマンドパレット**             |            **開発者ツール**             |
+| ![コマンドパレット](docs/commandpalette.png) | ![開発者ツール](docs/developertool.png) |
 
 ### 🔧 UI/UX 機能
 
