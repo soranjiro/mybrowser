@@ -39,7 +39,6 @@ public:
   QStringList getSearchHistory() const { return searchHistory; }
 
   // アクションの取得
-  QAction *getQuickSearchAction() const { return quickSearchAction; }
   QAction *getCommandPaletteAction() const { return commandPaletteAction; }
 #ifdef QT_DEBUG
   QAction *getOpenTestPageAction() const { return openTestPageAction; }
@@ -59,7 +58,6 @@ private slots:
 private:
   MainWindow *mainWindow;
   CommandPaletteDialog *commandPaletteDialog;
-  QAction *quickSearchAction;
   QAction *commandPaletteAction;
 #ifdef QT_DEBUG
   QAction *openTestPageAction;

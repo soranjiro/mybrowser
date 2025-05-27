@@ -138,16 +138,26 @@ void CommandPaletteDialog::setSearchHistory(const QStringList &history) {
 }
 
 void CommandPaletteDialog::showCentered() {
+  qDebug() << "CommandPaletteDialog::showCentered() called"; // デバッグ出力
+
   // 画面中央に表示
   if (QScreen *screen = QApplication::primaryScreen()) {
-    QRect screenGeometry = screen->geometry();
-    QRect dialogGeometry = geometry();
+    QRect screenGeometry = screen->availableGeometry();
+    qDebug() << "Screen geometry:" << screenGeometry; // デバッグ出力
 
-    int x = (screenGeometry.width() - dialogGeometry.width()) / 2;
-    int y = screenGeometry.height() / 4; // Spotlightのように少し上に配置
+    // ダイアログサイズを取得
+    resize(700, 480); // サイズを明示的に設定
+    QRect dialogGeometry = geometry();
+    qDebug() << "Dialog geometry:" << dialogGeometry; // デバッグ出力
+
+    int x = screenGeometry.x() + (screenGeometry.width() - width()) / 2;
+    int y = screenGeometry.y() + screenGeometry.height() / 4; // Spotlightのように少し上に配置
+
+    qDebug() << "Moving dialog to:" << x << y; // デバッグ出力
     move(x, y);
   }
 
+  qDebug() << "Showing dialog..."; // デバッグ出力
   show();
   activateWindow();
   raise();
@@ -156,6 +166,7 @@ void CommandPaletteDialog::showCentered() {
 
   // 初期候補を表示
   populateSuggestions("");
+  qDebug() << "Dialog should be visible now"; // デバッグ出力
 }
 
 void CommandPaletteDialog::keyPressEvent(QKeyEvent *event) {

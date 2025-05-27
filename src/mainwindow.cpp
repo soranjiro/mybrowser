@@ -31,14 +31,14 @@ MainWindow::MainWindow(QWidget *parent)
   qDebug() << "RELEASE_MODE active - Homepage URL:" << homePageUrl;
 #endif
 
+  // Initialize managers FIRST before setupUI
+  pictureInPictureManager = new PictureInPictureManager(this);
+  commandPaletteManager = new CommandPaletteManager(this);
+
   loadStyleSheet();
   setupUI();
   setupConnections();
   newTab(); // Open a default tab
-
-  // Initialize managers
-  pictureInPictureManager = new PictureInPictureManager(this);
-  commandPaletteManager = new CommandPaletteManager(this);
 }
 
 MainWindow::~MainWindow() {
@@ -158,7 +158,7 @@ void MainWindow::setupUI() {
 
 void MainWindow::createActions() {
   newTabAction = new QAction(QIcon::fromTheme("tab-new"), "New Tab", this);
-  newTabAction->setShortcut(QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_T)); // Changed from Ctrl+T to Ctrl+Shift+T
+  // ショートカットを削除 - コマンドパレット経由でのみ新しいタブを作成
 
   closeTabAction = new QAction(QIcon::fromTheme("window-close"), "Close Tab", this);
   closeTabAction->setShortcut(QKeySequence::Close);
@@ -198,7 +198,28 @@ void MainWindow::createActions() {
     pictureInPictureManager->setupActions();
   }
   if (commandPaletteManager) {
+    qDebug() << "Setting up command palette manager actions...";
     commandPaletteManager->setupActions();
+
+    QAction *cmdAction = commandPaletteManager->getCommandPaletteAction();
+    if (cmdAction) {
+      qDebug() << "Adding command palette action to MainWindow with shortcuts:";
+      for (const QKeySequence &shortcut : cmdAction->shortcuts()) {
+        qDebug() << "  -" << shortcut.toString();
+      }
+      this->addAction(cmdAction);
+      qDebug() << "Action added successfully. MainWindow actions count:" << this->actions().size();
+    } else {
+      qDebug() << "ERROR: commandPaletteAction is null!";
+    }
+
+#ifdef QT_DEBUG
+    QAction *testAction = commandPaletteManager->getOpenTestPageAction();
+    if (testAction) {
+      qDebug() << "Adding test page action with shortcut:" << testAction->shortcut().toString();
+      this->addAction(testAction);
+    }
+#endif
   }
 }
 
@@ -317,9 +338,6 @@ void MainWindow::createMenus() {
   // Dynamically populate bookmark items or show a dialog
 
   QMenu *toolsMenu = menuBar()->addMenu("&Tools");
-  if (commandPaletteManager && commandPaletteManager->getQuickSearchAction()) {
-    toolsMenu->addAction(commandPaletteManager->getQuickSearchAction());
-  }
   if (commandPaletteManager && commandPaletteManager->getCommandPaletteAction()) {
     toolsMenu->addAction(commandPaletteManager->getCommandPaletteAction());
   }
@@ -369,14 +387,7 @@ void MainWindow::createMenus() {
 #endif
 
   // Add keyboard shortcuts for command palette actions
-  if (commandPaletteManager) {
-    // Add actions to the main window so shortcuts work globally
-    this->addAction(commandPaletteManager->getQuickSearchAction());
-    this->addAction(commandPaletteManager->getCommandPaletteAction());
-#ifdef QT_DEBUG
-    this->addAction(commandPaletteManager->getOpenTestPageAction());
-#endif
-  }
+  // (Already added in createActions())
 }
 
 void MainWindow::setupConnections() {

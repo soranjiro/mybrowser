@@ -7,6 +7,7 @@
 #include "workspacemanager.h"
 #include <QAction>
 #include <QCoreApplication>
+#include <QDebug>
 #include <QDir>
 #include <QFile>
 #include <QInputDialog>
@@ -16,19 +17,9 @@
 #include <QWebEnginePage>
 
 CommandPaletteManager::CommandPaletteManager(MainWindow *parent)
-    : QObject(parent), mainWindow(parent), commandPaletteDialog(nullptr), quickSearchAction(nullptr) {
+    : QObject(parent), mainWindow(parent), commandPaletteDialog(nullptr), commandPaletteAction(nullptr) {
   loadSearchHistory();
-  setupActions();
-
-  // CommandPaletteDialogの初期化
-  commandPaletteDialog = new CommandPaletteDialog(mainWindow);
-  commandPaletteDialog->setSearchHistory(searchHistory);
-
-  // シグナル接続
-  connect(commandPaletteDialog, &CommandPaletteDialog::searchRequested,
-          this, QOverload<const QString &>::of(&CommandPaletteManager::handleQuickSearch));
-  connect(commandPaletteDialog, &CommandPaletteDialog::commandRequested,
-          this, &CommandPaletteManager::handleCommand);
+  // CommandPaletteDialogの初期化は遅延させる（初回使用時に作成）
 }
 
 CommandPaletteManager::~CommandPaletteManager() {
@@ -36,19 +27,25 @@ CommandPaletteManager::~CommandPaletteManager() {
 }
 
 void CommandPaletteManager::setupActions() {
-  quickSearchAction = new QAction("Quick Search / Command Palette", mainWindow);
-  quickSearchAction->setShortcut(QKeySequence(Qt::META | Qt::Key_T)); // Cmd+T on macOS
-  quickSearchAction->setStatusTip("Open quick search / command palette (Cmd+T)");
-  quickSearchAction->setToolTip("Open quick search / command palette (Cmd+T)");
+  qDebug() << "CommandPaletteManager::setupActions() called";
 
-  // Add command palette action with Ctrl+K as alternative
+  // Command palette action with Cmd+T and Ctrl+T shortcuts
   commandPaletteAction = new QAction("Command Palette", mainWindow);
-  commandPaletteAction->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_K));
-  commandPaletteAction->setStatusTip("Open command palette (Ctrl+K)");
-  commandPaletteAction->setToolTip("Open command palette (Ctrl+K)");
+  // Set multiple shortcuts: Cmd+T and Ctrl+T
+  QList<QKeySequence> shortcuts;
+  shortcuts << QKeySequence(Qt::CTRL | Qt::Key_T); // Ctrl+T
+  commandPaletteAction->setShortcuts(shortcuts);
+  commandPaletteAction->setStatusTip("Open command palette (Cmd+T or Ctrl+T)");
+  commandPaletteAction->setToolTip("Open command palette (Cmd+T or Ctrl+T)");
 
-  connect(quickSearchAction, &QAction::triggered, this, &CommandPaletteManager::onQuickSearchTriggered);
+  qDebug() << "Created commandPaletteAction with shortcuts:";
+  for (const QKeySequence &shortcut : commandPaletteAction->shortcuts()) {
+    qDebug() << "  -" << shortcut.toString();
+  }
+  qDebug() << "Action parent:" << commandPaletteAction->parent();
+
   connect(commandPaletteAction, &QAction::triggered, this, &CommandPaletteManager::onQuickSearchTriggered);
+  qDebug() << "Connected triggered signal to onQuickSearchTriggered slot";
 
 #ifdef QT_DEBUG
   // デバッグモード時のテストページアクション
@@ -62,9 +59,28 @@ void CommandPaletteManager::setupActions() {
 }
 
 void CommandPaletteManager::showCommandPalette() {
+  qDebug() << "Showing command palette..."; // デバッグ出力
+
+  // 遅延初期化：初回使用時にダイアログを作成
+  if (!commandPaletteDialog) {
+    qDebug() << "Creating command palette dialog for the first time...";
+    commandPaletteDialog = new CommandPaletteDialog(mainWindow);
+
+    // コマンドとクイック検索のシグナル接続
+    connect(commandPaletteDialog, &CommandPaletteDialog::commandRequested,
+            this, &CommandPaletteManager::handleCommand);
+    connect(commandPaletteDialog, &CommandPaletteDialog::searchRequested,
+            this, QOverload<const QString &>::of(&CommandPaletteManager::handleQuickSearch));
+
+    qDebug() << "Command palette dialog created and connected successfully";
+  }
+
   if (commandPaletteDialog) {
+    qDebug() << "Dialog exists, showing it..."; // デバッグ出力
     commandPaletteDialog->setSearchHistory(searchHistory);
     commandPaletteDialog->showCentered();
+  } else {
+    qDebug() << "Dialog is still null after creation attempt!"; // デバッグ出力
   }
 }
 
@@ -107,6 +123,7 @@ void CommandPaletteManager::openTestPage() {
 #endif
 
 void CommandPaletteManager::onQuickSearchTriggered() {
+  qDebug() << "Command palette triggered! (Cmd+T pressed)"; // デバッグ出力
   showCommandPalette();
 }
 
@@ -117,7 +134,7 @@ void CommandPaletteManager::onOpenTestPageTriggered() {
 #endif
 
 void CommandPaletteManager::handleQuickSearch(const QString &query) {
-  handleQuickSearch(query, false);
+  handleQuickSearch(query, true); // 常に新しいタブで開く
 }
 
 void CommandPaletteManager::handleQuickSearch(const QString &query, bool inNewTab) {
