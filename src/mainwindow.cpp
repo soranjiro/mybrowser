@@ -473,6 +473,11 @@ void MainWindow::newTab() {
     if (ok) {
       history.prepend({webView->title(), webView->url()});
       // Limit history size if needed
+
+      // 自動的にすべての動画をPicture-in-Picture対応にする
+      if (pictureInPictureManager) {
+        pictureInPictureManager->enablePiPForAllVideos(webView);
+      }
     }
     backAction->setEnabled(webView->page()->history()->canGoBack());
     forwardAction->setEnabled(webView->page()->history()->canGoForward());

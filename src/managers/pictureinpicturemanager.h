@@ -1,9 +1,9 @@
 #ifndef PICTUREINPICTUREMANAGER_H
 #define PICTUREINPICTUREMANAGER_H
 
-#include <QObject>
 #include <QAction>
 #include <QMenu>
+#include <QObject>
 
 class MainWindow;
 class WebView;
@@ -17,42 +17,42 @@ class WebView;
  * - メニュー項目の追加
  * - WebViewでのPiP機能実行
  */
-class PictureInPictureManager : public QObject
-{
-    Q_OBJECT
+class PictureInPictureManager : public QObject {
+  Q_OBJECT
 
 public:
-    explicit PictureInPictureManager(MainWindow *parent = nullptr);
-    ~PictureInPictureManager();
+  explicit PictureInPictureManager(MainWindow *parent = nullptr);
+  ~PictureInPictureManager();
 
-    // アクションとメニューの設定
-    void setupActions();
-    void addToMenu(QMenu *viewMenu);
-    void addToContextMenu(QMenu *contextMenu);
+  // アクションとメニューの設定
+  void setupActions();
+  void addToMenu(QMenu *viewMenu);
+  void addToContextMenu(QMenu *contextMenu);
 
-    // PiP機能の実行
-    void togglePictureInPicture(WebView *webView = nullptr);
-    void requestPictureInPicture(WebView *webView = nullptr);
-    void exitPictureInPicture(WebView *webView = nullptr);
+  // PiP機能の実行
+  void togglePictureInPicture(WebView *webView = nullptr);
+  void requestPictureInPicture(WebView *webView = nullptr);
+  void exitPictureInPicture(WebView *webView = nullptr);
+  void enablePiPForAllVideos(WebView *webView = nullptr);
 
-    // アクションの取得
-    QAction *getPictureInPictureAction() const { return pictureInPictureAction; }
+  // アクションの取得
+  QAction *getPictureInPictureAction() const { return pictureInPictureAction; }
 
 private slots:
-    void onTogglePictureInPicture();
+  void onTogglePictureInPicture();
 
 private:
-    MainWindow *mainWindow;
-    QAction *pictureInPictureAction;
-    QAction *contextMenuAction;
+  MainWindow *mainWindow;
+  QAction *pictureInPictureAction;
+  QAction *contextMenuAction;
 
-    // JavaScript生成メソッド
-    QString generatePiPJavaScript() const;
-    QString generatePiPDetectionScript() const;
-    QString generatePiPToggleScript() const;
+  // JavaScript生成メソッド
+  QString generatePiPJavaScript() const;
+  QString generatePiPDetectionScript() const;
+  QString generatePiPToggleScript() const;
 
-    // WebViewでのJavaScript実行
-    void executeJavaScript(WebView *webView, const QString &script);
+  // WebViewでのJavaScript実行
+  void executeJavaScript(WebView *webView, const QString &script);
 };
 
 #endif // PICTUREINPICTUREMANAGER_H

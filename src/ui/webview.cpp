@@ -149,17 +149,25 @@ WebView::WebView(QWidget *parent) : QWebEngineView(parent), devToolsView(nullptr
   pageSettings->setAttribute(QWebEngineSettings::WebGLEnabled, true);
   pageSettings->setAttribute(QWebEngineSettings::Accelerated2dCanvasEnabled, true);
   pageSettings->setAttribute(QWebEngineSettings::PlaybackRequiresUserGesture, false);
+  pageSettings->setAttribute(QWebEngineSettings::AllowRunningInsecureContent, true);
+  pageSettings->setAttribute(QWebEngineSettings::AllowWindowActivationFromJavaScript, true);
 
   // Configure profile for media features
   QWebEngineProfile *profile = customPage->profile();
   if (profile) {
     // Enable media features that support Picture-in-Picture
     profile->settings()->setAttribute(QWebEngineSettings::PlaybackRequiresUserGesture, false);
+    profile->settings()->setAttribute(QWebEngineSettings::AllowRunningInsecureContent, true);
+    profile->settings()->setAttribute(QWebEngineSettings::AllowWindowActivationFromJavaScript, true);
 
     // Add user agent for enhanced media support
     static bool profileConfigured = false;
     if (!profileConfigured) {
-      profile->setHttpUserAgent(profile->httpUserAgent() + " PictureInPictureSupported");
+      QString enhancedUserAgent = profile->httpUserAgent();
+      if (!enhancedUserAgent.contains("PictureInPictureSupported")) {
+        enhancedUserAgent += " PictureInPictureSupported";
+      }
+      profile->setHttpUserAgent(enhancedUserAgent);
       profileConfigured = true;
     }
   }
