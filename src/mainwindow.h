@@ -102,7 +102,11 @@ private:
   QAction *openLinkInNewTabAction;
 
   // Placeholder for settings
+#ifdef DEBUG_MODE
+  QString homePageUrl = "file:///Users/user/Documents/03_app/mybrowser/debug_test.html";
+#else
   QString homePageUrl = "https://www.google.com";
+#endif
   QString defaultSearchEngineUrl = "https://www.google.com/search?q=%1";
 
   // Placeholder for bookmarks and history

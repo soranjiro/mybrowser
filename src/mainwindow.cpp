@@ -21,6 +21,13 @@
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent), workspaceManager(nullptr), bookmarkManager(nullptr), quickSearchDialog(nullptr) {
+  // Debug output for homepage URL setting
+#ifdef DEBUG_MODE
+  qDebug() << "DEBUG_MODE active - Homepage URL:" << homePageUrl;
+#else
+  qDebug() << "RELEASE_MODE active - Homepage URL:" << homePageUrl;
+#endif
+
   loadStyleSheet();
   setupUI();
   setupConnections();

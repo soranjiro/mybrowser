@@ -1,8 +1,33 @@
 #include "mainwindow.h"
 #include <QApplication>
+#include <QDebug>
+#include <QEvent>
+#include <QMouseEvent>
 #include <QWebEnginePage>
 #include <QWebEngineProfile>
-#include <QWebEngineSettings> // Add this line
+#include <QWebEngineSettings>
+
+// Global event filter to debug mouse events
+class GlobalEventFilter : public QObject {
+public:
+  bool eventFilter(QObject *obj, QEvent *event) override {
+#ifdef DEBUG_MODE
+    if (event->type() == QEvent::MouseButtonPress ||
+        event->type() == QEvent::MouseButtonRelease ||
+        event->type() == QEvent::MouseButtonDblClick) {
+
+      QMouseEvent *mouseEvent = static_cast<QMouseEvent *>(event);
+      qDebug() << "GlobalEventFilter - Event type:" << event->type()
+               << "Button:" << mouseEvent->button()
+               << "Position:" << mouseEvent->pos()
+               << "Global:" << mouseEvent->globalPosition()
+               << "Object:" << obj->objectName()
+               << "Class:" << obj->metaObject()->className();
+    }
+#endif
+    return false; // Don't filter out the event
+  }
+};
 
 int main(int argc, char *argv[]) {
   // Enable developer tools remote debugging before QApplication creation
@@ -12,13 +37,21 @@ int main(int argc, char *argv[]) {
 #ifdef Q_OS_MACOS
   qputenv("QT_MAC_WANTS_LAYER", "1");
   qputenv("QT_ENABLE_HIGHDPI_SCALING", "1");
+  qputenv("QT_AUTO_SCREEN_SCALE_FACTOR", "1");
+  qputenv("QTWEBENGINE_DISABLE_SANDBOX", "1"); // Improve compatibility
 #endif
 
   QApplication a(argc, argv);
 
   // Improve mouse/trackpad responsiveness on macOS
-  a.setAttribute(Qt::AA_SynthesizeMouseForUnhandledTouchEvents, true);
+  a.setAttribute(Qt::AA_SynthesizeMouseForUnhandledTouchEvents, false); // Disable touch synthesis
   a.setAttribute(Qt::AA_SynthesizeTouchForUnhandledMouseEvents, false);
+
+#ifdef Q_OS_MACOS
+  // macOS specific mouse handling
+  a.setAttribute(Qt::AA_DontShowIconsInMenus, false);
+  a.setAttribute(Qt::AA_NativeWindows, false);
+#endif
 
   // Configure WebEngine settings for full JavaScript support
   QWebEngineProfile *defaultProfile = QWebEngineProfile::defaultProfile();
@@ -60,6 +93,22 @@ int main(int argc, char *argv[]) {
 
   // Enable error page for better debugging
   globalSettings->setAttribute(QWebEngineSettings::ErrorPageEnabled, true);
+
+  // macOS specific WebEngine settings for better mouse handling
+#ifdef Q_OS_MACOS
+  globalSettings->setAttribute(QWebEngineSettings::ScrollAnimatorEnabled, false);
+  globalSettings->setAttribute(QWebEngineSettings::SpatialNavigationEnabled, false);
+#endif
+
+  // Install global event filter to debug mouse events
+  GlobalEventFilter *globalFilter = new GlobalEventFilter();
+  a.installEventFilter(globalFilter);
+#ifdef DEBUG_MODE
+  qDebug() << "DEBUG_MODE is enabled";
+  qDebug() << "Global event filter installed";
+#else
+  qDebug() << "RELEASE_MODE is enabled";
+#endif
 
   MainWindow w;
   w.show();

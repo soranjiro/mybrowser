@@ -3,9 +3,11 @@
 
 #include <QAction>
 #include <QContextMenuEvent>
+#include <QFocusEvent>
 #include <QGestureEvent>
 #include <QKeyEvent>
 #include <QMenu>
+#include <QMouseEvent>
 #include <QSwipeGesture>
 #include <QWebEngineHistory>
 #include <QWebEnginePage>
@@ -21,6 +23,8 @@ public:
 
 protected:
   void javaScriptConsoleMessage(JavaScriptConsoleMessageLevel level, const QString &message, int lineNumber, const QString &sourceID) override;
+  void javaScriptAlert(const QUrl &securityOrigin, const QString &msg) override;
+  bool acceptNavigationRequest(const QUrl &url, NavigationType type, bool isMainFrame) override;
 };
 
 class WebView : public QWebEngineView {
@@ -37,10 +41,16 @@ public slots:
 protected:
   QWebEngineView *createWindow(QWebEnginePage::WebWindowType type) override;
   bool event(QEvent *event) override;
+  bool eventFilter(QObject *obj, QEvent *event) override;
   bool gestureEvent(QGestureEvent *event);
   void swipeTriggered(QSwipeGesture *gesture);
   void keyPressEvent(QKeyEvent *event) override;
   void contextMenuEvent(QContextMenuEvent *event) override;
+  void mousePressEvent(QMouseEvent *event) override;
+  void mouseReleaseEvent(QMouseEvent *event) override;
+  void mouseMoveEvent(QMouseEvent *event) override;
+  void focusInEvent(QFocusEvent *event) override;
+  void focusOutEvent(QFocusEvent *event) override;
 
 private:
   QWebEngineView *devToolsView; // Developer tools window

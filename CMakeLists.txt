@@ -4,6 +4,20 @@ project(MyBrowser LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+# Set default build type to Debug if not specified
+if(NOT CMAKE_BUILD_TYPE)
+    set(CMAKE_BUILD_TYPE Debug)
+endif()
+
+# Add debug and release specific definitions
+if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+    add_definitions(-DDEBUG_MODE)
+    message(STATUS "Building in Debug mode - extensive logging enabled")
+else()
+    # Don't define DEBUG_MODE for release builds
+    message(STATUS "Building in Release mode - minimal logging")
+endif()
+
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOUIC ON)
@@ -30,6 +44,13 @@ add_executable(MyBrowser
     src/ui_constants.h
     resources.qrc
 )
+
+# Add debug and release specific definitions to target
+if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+    target_compile_definitions(MyBrowser PRIVATE DEBUG_MODE)
+else()
+    # Don't define DEBUG_MODE for release builds
+endif()
 
 # Add this line to explicitly include directories for WebEngineCore and WebEngineWidgets
 target_include_directories(MyBrowser PRIVATE
