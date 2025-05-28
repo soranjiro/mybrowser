@@ -37,6 +37,7 @@ public:
 
 public slots:
   void showDevTools(); // Show developer tools
+  void requestPictureInPicture(); // Request Picture-in-Picture mode
 
 protected:
   QWebEngineView *createWindow(QWebEnginePage::WebWindowType type) override;

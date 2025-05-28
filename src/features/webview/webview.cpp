@@ -1,5 +1,5 @@
 #include "webview.h"
-#include "mainwindow.h" // To potentially access MainWindow for new tab creation logic
+#include "../main-window/mainwindow.h" // To potentially access MainWindow for new tab creation logic
 #include <QAction>
 #include <QApplication>
 #include <QContextMenuEvent>
@@ -10,6 +10,7 @@
 #include <QMessageBox>
 #include <QMouseEvent>
 #include <QTimer>
+#include <QWebEngineProfile>
 #include <QWebEngineSettings>
 
 // Custom page implementation
@@ -148,6 +149,28 @@ WebView::WebView(QWidget *parent) : QWebEngineView(parent), devToolsView(nullptr
   pageSettings->setAttribute(QWebEngineSettings::WebGLEnabled, true);
   pageSettings->setAttribute(QWebEngineSettings::Accelerated2dCanvasEnabled, true);
   pageSettings->setAttribute(QWebEngineSettings::PlaybackRequiresUserGesture, false);
+  pageSettings->setAttribute(QWebEngineSettings::AllowRunningInsecureContent, true);
+  pageSettings->setAttribute(QWebEngineSettings::AllowWindowActivationFromJavaScript, true);
+
+  // Configure profile for media features
+  QWebEngineProfile *profile = customPage->profile();
+  if (profile) {
+    // Enable media features that support Picture-in-Picture
+    profile->settings()->setAttribute(QWebEngineSettings::PlaybackRequiresUserGesture, false);
+    profile->settings()->setAttribute(QWebEngineSettings::AllowRunningInsecureContent, true);
+    profile->settings()->setAttribute(QWebEngineSettings::AllowWindowActivationFromJavaScript, true);
+
+    // Add user agent for enhanced media support
+    static bool profileConfigured = false;
+    if (!profileConfigured) {
+      QString enhancedUserAgent = profile->httpUserAgent();
+      if (!enhancedUserAgent.contains("PictureInPictureSupported")) {
+        enhancedUserAgent += " PictureInPictureSupported";
+      }
+      profile->setHttpUserAgent(enhancedUserAgent);
+      profileConfigured = true;
+    }
+  }
 
   // Forward signals that MainWindow might be interested in
   connect(page(), &QWebEnginePage::titleChanged, this, &WebView::titleChanged);
@@ -224,6 +247,78 @@ WebView::WebView(QWidget *parent) : QWebEngineView(parent), devToolsView(nullptr
               console.log('JS Blur Event:', e.target.tagName);
             }, true);
           }
+
+          // Enable Picture-in-Picture for all videos
+          function enablePictureInPicture() {
+            var videos = document.querySelectorAll('video');
+            videos.forEach(function(video) {
+              // Remove disablepictureinpicture attribute if present
+              if (video.hasAttribute('disablepictureinpicture')) {
+                video.removeAttribute('disablepictureinpicture');
+                if (debugMode) {
+                  console.log('WebView: Removed disablepictureinpicture from video element');
+                }
+              }
+
+              // Ensure picture-in-picture is not disabled via property
+              if (video.disablePictureInPicture === true) {
+                video.disablePictureInPicture = false;
+                if (debugMode) {
+                  console.log('WebView: Enabled picture-in-picture via property');
+                }
+              }
+            });
+          }
+
+          // Run immediately
+          enablePictureInPicture();
+
+          // Watch for new videos being added to the DOM
+          var observer = new MutationObserver(function(mutations) {
+            mutations.forEach(function(mutation) {
+              mutation.addedNodes.forEach(function(node) {
+                if (node.nodeType === 1) { // ELEMENT_NODE
+                  // Check if the node itself is a video
+                  if (node.tagName === 'VIDEO') {
+                    if (node.hasAttribute('disablepictureinpicture')) {
+                      node.removeAttribute('disablepictureinpicture');
+                      if (debugMode) {
+                        console.log('WebView: Removed disablepictureinpicture from newly added video');
+                      }
+                    }
+                    if (node.disablePictureInPicture === true) {
+                      node.disablePictureInPicture = false;
+                      if (debugMode) {
+                        console.log('WebView: Enabled picture-in-picture for newly added video');
+                      }
+                    }
+                  }
+                  // Check for videos within the added node
+                  var videos = node.querySelectorAll ? node.querySelectorAll('video') : [];
+                  videos.forEach(function(video) {
+                    if (video.hasAttribute('disablepictureinpicture')) {
+                      video.removeAttribute('disablepictureinpicture');
+                      if (debugMode) {
+                        console.log('WebView: Removed disablepictureinpicture from video in newly added content');
+                      }
+                    }
+                    if (video.disablePictureInPicture === true) {
+                      video.disablePictureInPicture = false;
+                      if (debugMode) {
+                        console.log('WebView: Enabled picture-in-picture for video in newly added content');
+                      }
+                    }
+                  });
+                }
+              });
+            });
+          });
+
+          // Start observing
+          observer.observe(document.body, {
+            childList: true,
+            subtree: true
+          });
 
           // Enhanced link handling - FIXED for JavaScript links
           // Add highest priority click handler for JavaScript links
@@ -511,53 +606,74 @@ void WebView::swipeTriggered(QSwipeGesture *gesture) {
 }
 
 void WebView::showDevTools() {
-  // Show developer tools for the current page
-  if (!page()) {
-#ifdef DEBUG_MODE
-    qDebug() << "No page available for developer tools";
-#endif
-    return;
+  if (!devToolsView) {
+    devToolsView = new QWebEngineView();
+    devToolsView->setWindowTitle("Developer Tools");
+    devToolsView->resize(800, 600);
   }
 
-  // If developer tools are already open, bring to front
-  if (devToolsView) {
-    devToolsView->raise();
-    devToolsView->activateWindow();
-    return;
-  }
-
-  // Create developer tools page and view
-  QWebEnginePage *devToolsPage = new QWebEnginePage(QWebEngineProfile::defaultProfile(), this);
-  devToolsView = new QWebEngineView();
-  devToolsView->setPage(devToolsPage);
-
-  // Set the dev tools page for the current page
-  page()->setDevToolsPage(devToolsPage);
-
-  // Configure the developer tools window
-  devToolsView->setWindowTitle("開発者ツール - " + page()->title());
-  devToolsView->setWindowIcon(this->window()->windowIcon());
-  devToolsView->resize(1200, 800);
-  devToolsView->setAttribute(Qt::WA_DeleteOnClose);
-
-  // Clean up when developer tools window is closed
-  connect(devToolsView, &QObject::destroyed, this, [this]() {
-    devToolsView = nullptr;
-    // Use QPointer to safely check if page still exists
-    if (page()) {
-      page()->setDevToolsPage(nullptr);
-    } }, Qt::QueuedConnection);
-
-  // Update title when page title changes - use weak connection
-  connect(page(), &QWebEnginePage::titleChanged, this, [this](const QString &title) {
-    if (devToolsView) {
-      devToolsView->setWindowTitle("開発者ツール - " + title);
-    } }, Qt::QueuedConnection);
-
+  page()->setDevToolsPage(devToolsView->page());
   devToolsView->show();
-#ifdef DEBUG_MODE
-  qDebug() << "Developer tools opened";
-#endif
+  devToolsView->raise();
+  devToolsView->activateWindow();
+}
+
+void WebView::requestPictureInPicture() {
+  // Use the same JavaScript as in MainWindow but with direct execution
+  QString script = R"(
+    (function() {
+      var videos = document.querySelectorAll('video');
+      if (videos.length === 0) {
+        alert('このページに動画が見つかりません');
+        return;
+      }
+
+      // Find the first video that is playing or can be played
+      var targetVideo = null;
+      for (var i = 0; i < videos.length; i++) {
+        var video = videos[i];
+        if (!video.paused || video.readyState >= 2) {
+          targetVideo = video;
+          break;
+        }
+      }
+
+      if (!targetVideo && videos.length > 0) {
+        targetVideo = videos[0]; // Fallback to first video
+      }
+
+      if (!targetVideo) {
+        alert('ピクチャーインピクチャーに適した動画が見つかりません');
+        return;
+      }
+
+      // Check if Picture-in-Picture is supported
+      if (!document.pictureInPictureEnabled || !targetVideo.requestPictureInPicture) {
+        alert('ピクチャーインピクチャーはこのページまたはブラウザでサポートされていません');
+        return;
+      }
+
+      // Check if already in Picture-in-Picture
+      if (document.pictureInPictureElement) {
+        document.exitPictureInPicture().then(function() {
+          console.log('ピクチャーインピクチャーモードを終了しました');
+        }).catch(function(error) {
+          console.error('ピクチャーインピクチャー終了エラー:', error);
+          alert('ピクチャーインピクチャーの終了に失敗しました: ' + error.message);
+        });
+      } else {
+        // Enter Picture-in-Picture
+        targetVideo.requestPictureInPicture().then(function() {
+          console.log('ピクチャーインピクチャーモードに入りました');
+        }).catch(function(error) {
+          console.error('ピクチャーインピクチャー開始エラー:', error);
+          alert('ピクチャーインピクチャーの開始に失敗しました: ' + error.message);
+        });
+      }
+    })();
+  )";
+
+  page()->runJavaScript(script);
 }
 
 void WebView::keyPressEvent(QKeyEvent *event) {
@@ -587,6 +703,10 @@ void WebView::contextMenuEvent(QContextMenuEvent *event) {
   connect(reloadAction, &QAction::triggered, [this]() { page()->triggerAction(QWebEnginePage::Reload); });
 
   menu->addSeparator();
+
+  // Add Picture-in-Picture action
+  QAction *pipAction = menu->addAction("ピクチャーインピクチャー");
+  connect(pipAction, &QAction::triggered, this, &WebView::requestPictureInPicture);
 
   // Add developer tools action
   QAction *inspectAction = menu->addAction("要素を検証");
