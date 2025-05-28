@@ -2,7 +2,7 @@
     <qresource prefix="/">
         <!-- Application styles -->
         <file>styles/styles.qss</file>
-        
+
         <!-- Feature-specific resources -->
         <!-- Picture-in-Picture -->
         <file>src/features/picture-in-picture/pip.css</file>

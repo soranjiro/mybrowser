@@ -4,7 +4,7 @@ A modern Qt-based web browser with advanced features including Picture-in-Pictur
 
 ## Features
 
-- **Pi## ビルドと実行eo Support**: Automatic PiP controls for video content
+- **Pi## ビルドと実行 eo Support**: Automatic PiP controls for video content
 - **Command Palette**: Quick search and command execution (Ctrl+K)
 - **Workspace Management**: Multiple workspace and session support
 - **Advanced Tab Management**: Vertical tab widget with enhanced navigation
@@ -79,17 +79,21 @@ mybrowser/
 The application follows a **feature-based architecture** with clear separation of concerns:
 
 ### Core Components
+
 - **MainWindow**: Central application window with integrated UI management
 - **WebView**: Enhanced web view with custom JavaScript injection capabilities
 - **VerticalTabWidget**: Modern tab management with vertical layout
 
 ### Feature Managers
+
 Each feature is organized in its own folder containing:
+
 - **C++ Manager Classes**: Business logic and Qt integration
 - **CSS Files**: Feature-specific styling
 - **JavaScript Files**: Client-side functionality and enhancements
 
 #### Feature Organization:
+
 - **🎥 Picture-in-Picture**: Video PiP functionality with custom API implementation
 - **⌘ Command Palette**: Quick search and command execution system
 - **📁 Workspace Management**: Multiple workspace and session support
@@ -98,6 +102,7 @@ Each feature is organized in its own folder containing:
 - **🌐 WebView Enhancement**: Custom web page enhancements and integrations
 
 ### Benefits of Feature-Based Architecture:
+
 - **Modularity**: Each feature is self-contained
 - **Maintainability**: Easy to locate and modify feature-specific code
 - **Scalability**: Simple to add new features
