@@ -1,4 +1,4 @@
-#include "mainwindow.h"
+#include "features/main-window/mainwindow.h"
 #include <QApplication>
 #include <QDebug>
 #include <QEvent>

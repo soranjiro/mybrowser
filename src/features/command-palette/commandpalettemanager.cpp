@@ -1,10 +1,10 @@
 #include "commandpalettemanager.h"
-#include "../mainwindow.h"
-#include "../ui/commandpalettedialog.h"
-#include "../ui/verticaltabwidget.h"
-#include "../ui/webview.h"
-#include "pictureinpicturemanager.h"
-#include "workspacemanager.h"
+#include "../main-window/mainwindow.h"
+#include "../picture-in-picture/pictureinpicturemanager.h"
+#include "../tab-widget/verticaltabwidget.h"
+#include "../webview/webview.h"
+#include "../workspace/workspacemanager.h"
+#include "commandpalettedialog.h"
 #include <QAction>
 #include <QCoreApplication>
 #include <QDebug>

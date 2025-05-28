@@ -1,5 +1,38 @@
 <RCC>
     <qresource prefix="/">
+        <!-- Legacy resource files -->
         <file>styles/styles.qss</file>
+        <file>resources/css/pip.css</file>
+        <file>resources/css/test-styles.css</file>
+        <file>resources/js/pip.js</file>
+        <file>resources/js/webview-enhancement.js</file>
+        <file>resources/js/test-scripts.js</file>
+
+        <!-- Feature-specific resources -->
+        <!-- Picture-in-Picture -->
+        <file>src/features/picture-in-picture/pip.css</file>
+        <file>src/features/picture-in-picture/pip.js</file>
+
+        <!-- Bookmark -->
+        <file>src/features/bookmark/bookmark.css</file>
+        <file>src/features/bookmark/bookmark.js</file>
+
+        <!-- Command Palette -->
+        <file>src/features/command-palette/command-palette.css</file>
+        <file>src/features/command-palette/command-palette.js</file>
+
+        <!-- Tab Widget -->
+        <file>src/features/tab-widget/tab-widget.css</file>
+        <file>src/features/tab-widget/tab-widget.js</file>
+
+        <!-- Workspace -->
+        <file>src/features/workspace/workspace.css</file>
+        <file>src/features/workspace/workspace.js</file>
+
+        <!-- WebView Enhancement -->
+        <file>src/features/webview/webview-enhancement.js</file>
+
+        <!-- Main Window -->
+        <file>src/features/main-window/styles.qss</file>
     </qresource>
 </RCC>

@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PiP API テスト</title>
+    <link rel="stylesheet" href="pip-test.css">
+</head>
+<body>
+    <div class="test-container">
+        <h1>🎥 Picture-in-Picture API テスト</h1>
+        
+        <h2>テストビデオ</h2>
+        <video id="testVideo" controls>
+            <source src="https://www.w3schools.com/html/mov_bbb.mp4" type="video/mp4">
+            <source src="https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4" type="video/mp4">
+            ローカルファイルの場合は動画ファイルをここに配置してください
+        </video>
+        
+        <div style="margin-top: 15px;">
+            <button onclick="testPiPSupport()">📋 PiP サポート確認</button>
+            <button onclick="requestPiP()">📺 PiP 開始</button>
+            <button onclick="exitPiP()">❌ PiP 終了</button>
+            <button onclick="testVideoState()">🔍 ビデオ状態確認</button>
+            <button onclick="clearLog()">🧹 ログクリア</button>
+        </div>
+        
+        <div id="log"></div>
+    </div>
+
+    <script>
+        function log(message) {
+            const logDiv = document.getElementById('log');
+            const timestamp = new Date().toLocaleTimeString();
+            logDiv.innerHTML += `[${timestamp}] ${message}\n`;
+            logDiv.scrollTop = logDiv.scrollHeight;
+            console.log(message);
+        }
+
+        function clearLog() {
+            document.getElementById('log').innerHTML = '';
+        }
+
+        function testPiPSupport() {
+            log('=== PiP サポート確認開始 ===');
+            
+            // 基本的なAPIチェック
+            if ('pictureInPictureEnabled' in document) {
+                log('✅ document.pictureInPictureEnabled: ' + document.pictureInPictureEnabled);
+            } else {
+                log('❌ document.pictureInPictureEnabled は利用できません');
+            }
+            
+            // ビデオ要素のPiPサポートチェック
+            const video = document.getElementById('testVideo');
+            if (video) {
+                log('✅ ビデオ要素が見つかりました');
+                
+                if ('requestPictureInPicture' in video) {
+                    log('✅ video.requestPictureInPicture メソッドが利用可能');
+                } else {
+                    log('❌ video.requestPictureInPicture メソッドが利用できません');
+                }
+                
+                if ('disablePictureInPicture' in video) {
+                    log(`📌 video.disablePictureInPicture: ${video.disablePictureInPicture}`);
+                } else {
+                    log('❌ video.disablePictureInPicture プロパティが利用できません');
+                }
+                
+                log(`📌 ビデオの再生状態: paused=${video.paused}, currentTime=${video.currentTime}`);
+                log(`📌 ビデオの準備状態: readyState=${video.readyState}, networkState=${video.networkState}`);
+            } else {
+                log('❌ ビデオ要素が見つかりません');
+            }
+            
+            // 現在のPiP状態
+            if ('pictureInPictureElement' in document) {
+                log(`📌 現在のPiP要素: ${document.pictureInPictureElement ? 'あり' : 'なし'}`);
+            }
+            
+            log('=== PiP サポート確認完了 ===');
+        }
+
+        async function requestPiP() {
+            log('=== PiP 開始試行 ===');
+            
+            const video = document.getElementById('testVideo');
+            if (!video) {
+                log('❌ ビデオ要素が見つかりません');
+                return;
+            }
+            
+            try {
+                log('🔄 PiP リクエスト開始...');
+                
+                // まず動画を再生
+                if (video.paused) {
+                    log('▶️ ビデオを再生開始');
+                    await video.play();
+                }
+                
+                // PiPリクエスト
+                const pipWindow = await video.requestPictureInPicture();
+                log('✅ PiP モード開始成功！');
+                log(`📺 PiP ウィンドウサイズ: ${pipWindow.width}x${pipWindow.height}`);
+                
+                pipWindow.addEventListener('resize', () => {
+                    log(`📏 PiP ウィンドウサイズ変更: ${pipWindow.width}x${pipWindow.height}`);
+                });
+                
+            } catch (error) {
+                log(`❌ PiP 開始エラー: ${error.name} - ${error.message}`);
+                
+                if (error.name === 'NotSupportedError') {
+                    log('💡 この環境ではPiPがサポートされていません');
+                } else if (error.name === 'NotAllowedError') {
+                    log('💡 PiP使用が許可されていません（ユーザーアクションが必要）');
+                } else if (error.name === 'InvalidStateError') {
+                    log('💡 ビデオの状態が無効です');
+                }
+            }
+        }
+
+        async function exitPiP() {
+            log('=== PiP 終了試行 ===');
+            
+            try {
+                if (document.pictureInPictureElement) {
+                    await document.exitPictureInPicture();
+                    log('✅ PiP モード終了成功');
+                } else {
+                    log('ℹ️ 現在PiPモードではありません');
+                }
+            } catch (error) {
+                log(`❌ PiP 終了エラー: ${error.name} - ${error.message}`);
+            }
+        }
+
+        function testVideoState() {
+            log('=== ビデオ状態確認 ===');
+            
+            const video = document.getElementById('testVideo');
+            if (!video) {
+                log('❌ ビデオ要素が見つかりません');
+                return;
+            }
+            
+            log(`📌 paused: ${video.paused}`);
+            log(`📌 currentTime: ${video.currentTime}`);
+            log(`📌 duration: ${video.duration}`);
+            log(`📌 readyState: ${video.readyState}`);
+            log(`📌 networkState: ${video.networkState}`);
+            log(`📌 videoWidth: ${video.videoWidth}`);
+            log(`📌 videoHeight: ${video.videoHeight}`);
+            log(`📌 disablePictureInPicture: ${video.disablePictureInPicture}`);
+        }
+
+    <script src="pip-test.js"></script>
+</body>
+</html>

@@ -1,6 +1,6 @@
 #include "workspacemanager.h"
-#include "../ui/verticaltabwidget.h"
-#include "../ui/webview.h"
+#include "../tab-widget/verticaltabwidget.h"
+#include "../webview/webview.h"
 #include <QDebug>
 #include <QUuid>
 

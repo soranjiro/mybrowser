@@ -29,26 +29,37 @@ message(STATUS "Qt6WebEngineWidgets_INCLUDE_DIRS: ${Qt6WebEngineWidgets_INCLUDE_
 
 add_executable(MyBrowser
     src/main.cpp
-    src/mainwindow.cpp
-    src/mainwindow.h
 
-    # UI Components
-    src/ui/webview.cpp
-    src/ui/webview.h
-    src/ui/verticaltabwidget.cpp
-    src/ui/verticaltabwidget.h
-    src/ui/commandpalettedialog.cpp
-    src/ui/commandpalettedialog.h
+    # Feature-based organization
+    # Main Window
+    src/features/main-window/mainwindow.cpp
+    src/features/main-window/mainwindow.h
 
-    # Manager Classes
-    src/managers/workspacemanager.cpp
-    src/managers/workspacemanager.h
-    src/managers/bookmarkmanager.cpp
-    src/managers/bookmarkmanager.h
-    src/managers/pictureinpicturemanager.cpp
-    src/managers/pictureinpicturemanager.h
-    src/managers/commandpalettemanager.cpp
-    src/managers/commandpalettemanager.h
+    # WebView Features
+    src/features/webview/webview.cpp
+    src/features/webview/webview.h
+
+    # Tab Widget
+    src/features/tab-widget/verticaltabwidget.cpp
+    src/features/tab-widget/verticaltabwidget.h
+
+    # Command Palette
+    src/features/command-palette/commandpalettedialog.cpp
+    src/features/command-palette/commandpalettedialog.h
+    src/features/command-palette/commandpalettemanager.cpp
+    src/features/command-palette/commandpalettemanager.h
+
+    # Workspace Management
+    src/features/workspace/workspacemanager.cpp
+    src/features/workspace/workspacemanager.h
+
+    # Bookmark Management
+    src/features/bookmark/bookmarkmanager.cpp
+    src/features/bookmark/bookmarkmanager.h
+
+    # Picture-in-Picture
+    src/features/picture-in-picture/pictureinpicturemanager.cpp
+    src/features/picture-in-picture/pictureinpicturemanager.h
 
     # Core
     src/core/ui_constants.h

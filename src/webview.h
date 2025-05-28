@@ -3,12 +3,14 @@
 
 #include <QAction>
 #include <QContextMenuEvent>
+#include <QFile>
 #include <QFocusEvent>
 #include <QGestureEvent>
 #include <QKeyEvent>
 #include <QMenu>
 #include <QMouseEvent>
 #include <QSwipeGesture>
+#include <QTextStream>
 #include <QWebEngineHistory>
 #include <QWebEnginePage>
 #include <QWebEngineProfile>
@@ -33,7 +35,8 @@ class WebView : public QWebEngineView {
 public:
   WebView(QWidget *parent = nullptr);
   ~WebView();
-  void setPage(QWebEnginePage *page); // Allow setting a custom page if needed
+  void setPage(QWebEnginePage *page);                          // Allow setting a custom page if needed
+  QString loadResourceFile(const QString &resourcePath) const; // Load resource file content
 
 public slots:
   void showDevTools();            // Show developer tools

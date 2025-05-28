@@ -1,0 +1,351 @@
+/* Workspace Manager Styles */
+
+/* Workspace List */
+.workspace-container {
+  background-color: #ffffff;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.workspace-header {
+  background-color: #f8f9fa;
+  padding: 16px;
+  border-bottom: 1px solid #e5e7eb;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.workspace-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: #1f2937;
+  margin: 0;
+}
+
+.workspace-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.workspace-btn {
+  background-color: #007acc;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  padding: 6px 12px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.workspace-btn:hover {
+  background-color: #005a9e;
+}
+
+.workspace-btn.secondary {
+  background-color: #6c757d;
+}
+
+.workspace-btn.secondary:hover {
+  background-color: #545b62;
+}
+
+/* Workspace List */
+.workspace-list {
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.workspace-item {
+  padding: 16px;
+  border-bottom: 1px solid #f3f4f6;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.workspace-item:hover {
+  background-color: #f9fafb;
+}
+
+.workspace-item:last-child {
+  border-bottom: none;
+}
+
+.workspace-item.active {
+  background-color: #eff6ff;
+  border-left: 4px solid #007acc;
+}
+
+.workspace-icon {
+  width: 32px;
+  height: 32px;
+  background-color: #007acc;
+  color: white;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+.workspace-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.workspace-name {
+  font-weight: 500;
+  color: #1f2937;
+  font-size: 14px;
+}
+
+.workspace-description {
+  color: #6b7280;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.workspace-meta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 11px;
+  color: #9ca3af;
+}
+
+.workspace-tab-count {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.workspace-last-accessed {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* Workspace Creation Dialog */
+.workspace-dialog {
+  background-color: white;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+  padding: 24px;
+  width: 400px;
+  max-width: 90vw;
+}
+
+.workspace-dialog h3 {
+  margin-top: 0;
+  margin-bottom: 16px;
+  color: #1f2937;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.workspace-form-group {
+  margin-bottom: 16px;
+}
+
+.workspace-form-group label {
+  display: block;
+  margin-bottom: 6px;
+  color: #374151;
+  font-weight: 500;
+  font-size: 14px;
+}
+
+.workspace-form-group input,
+.workspace-form-group textarea {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 14px;
+  font-family: inherit;
+  transition: border-color 0.2s ease;
+}
+
+.workspace-form-group input:focus,
+.workspace-form-group textarea:focus {
+  outline: none;
+  border-color: #007acc;
+  box-shadow: 0 0 0 3px rgba(0, 122, 204, 0.1);
+}
+
+.workspace-form-group textarea {
+  resize: vertical;
+  min-height: 80px;
+}
+
+.workspace-color-picker {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.workspace-color-option {
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.workspace-color-option:hover {
+  transform: scale(1.1);
+  border-color: #374151;
+}
+
+.workspace-color-option.selected {
+  border-color: #007acc;
+  box-shadow: 0 0 0 2px rgba(0, 122, 204, 0.2);
+}
+
+.workspace-dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 24px;
+  padding-top: 16px;
+  border-top: 1px solid #e5e7eb;
+}
+
+/* Workspace Switcher */
+.workspace-switcher {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background-color: white;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+  padding: 16px;
+  z-index: 1000;
+  min-width: 300px;
+}
+
+.workspace-switcher-header {
+  text-align: center;
+  margin-bottom: 16px;
+  color: #6b7280;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.workspace-switcher-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.workspace-switcher-item {
+  padding: 8px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.1s ease;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.workspace-switcher-item:hover,
+.workspace-switcher-item.selected {
+  background-color: #007acc;
+  color: white;
+}
+
+.workspace-switcher-icon {
+  width: 20px;
+  height: 20px;
+  background-color: #007acc;
+  color: white;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.workspace-switcher-item.selected .workspace-switcher-icon,
+.workspace-switcher-item:hover .workspace-switcher-icon {
+  background-color: rgba(255, 255, 255, 0.2);
+}
+
+.workspace-switcher-name {
+  font-weight: 500;
+}
+
+/* Empty State */
+.workspace-empty {
+  text-align: center;
+  padding: 40px 20px;
+  color: #9ca3af;
+}
+
+.workspace-empty-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+  display: block;
+}
+
+.workspace-empty-title {
+  font-size: 18px;
+  font-weight: 500;
+  margin-bottom: 8px;
+  color: #6b7280;
+}
+
+.workspace-empty-description {
+  font-size: 14px;
+  margin-bottom: 20px;
+}
+
+/* Animation */
+.workspace-dialog,
+.workspace-switcher {
+  animation: slideIn 0.2s ease-out;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -60%) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
+
+/* Scrollbar */
+.workspace-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.workspace-list::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+.workspace-list::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 3px;
+}
+
+.workspace-list::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
+}
