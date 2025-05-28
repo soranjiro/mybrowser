@@ -1,13 +1,8 @@
 <RCC>
     <qresource prefix="/">
-        <!-- Legacy resource files -->
+        <!-- Application styles -->
         <file>styles/styles.qss</file>
-        <file>resources/css/pip.css</file>
-        <file>resources/css/test-styles.css</file>
-        <file>resources/js/pip.js</file>
-        <file>resources/js/webview-enhancement.js</file>
-        <file>resources/js/test-scripts.js</file>
-
+        
         <!-- Feature-specific resources -->
         <!-- Picture-in-Picture -->
         <file>src/features/picture-in-picture/pip.css</file>

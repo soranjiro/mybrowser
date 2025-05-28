@@ -4,7 +4,7 @@ A modern Qt-based web browser with advanced features including Picture-in-Pictur
 
 ## Features
 
-- **Picture-in-Picture Video Support**: Automatic PiP controls for video content
+- **Pi## ビルドと実行eo Support**: Automatic PiP controls for video content
 - **Command Palette**: Quick search and command execution (Ctrl+K)
 - **Workspace Management**: Multiple workspace and session support
 - **Advanced Tab Management**: Vertical tab widget with enhanced navigation
@@ -15,40 +15,94 @@ A modern Qt-based web browser with advanced features including Picture-in-Pictur
 
 ```
 mybrowser/
-├── src/                     # Source code
-│   ├── main.cpp            # Application entry point
-│   ├── mainwindow.h/cpp    # Main window implementation
-│   ├── core/               # Core utilities and constants
-│   │   └── ui_constants.h
-│   ├── managers/           # Feature managers (separated by concern)
-│   │   ├── bookmarkmanager.h/cpp
-│   │   ├── commandpalettemanager.h/cpp
-│   │   ├── pictureinpicturemanager.h/cpp
-│   │   └── workspacemanager.h/cpp
-│   └── ui/                 # UI components
-│       ├── webview.h/cpp
-│       ├── verticaltabwidget.h/cpp
-│       └── quicksearchdialog.h/cpp
-├── styles/                 # Application stylesheets
-│   └── styles.qss
-├── tests/                  # Test pages and documentation
-│   ├── video_test.html
-│   ├── pip_test.html
-│   ├── pip_integration_test.html
-│   └── README.md
-├── scripts/                # Build scripts
-│   ├── build_debug.sh
-│   ├── build_release.sh
-│   └── README.md
-├── docs/                   # Documentation
-│   ├── README.md
-│   └── images/
-└── build/                  # Build output (generated)
+├── src/                           # Source code
+│   ├── main.cpp                  # Application entry point
+│   ├── core/                     # Core utilities and constants
+│   │   └── ui_constants.h        # UI constants and definitions
+│   └── features/                 # Feature-based organization
+│       ├── main-window/          # Main window implementation
+│       │   ├── mainwindow.h/cpp  # Main window class
+│       │   └── styles.qss        # Main window styles
+│       ├── webview/              # Web view components
+│       │   ├── webview.h/cpp     # Enhanced web view implementation
+│       │   └── webview-enhancement.js # Web view JavaScript enhancements
+│       ├── tab-widget/           # Tab management
+│       │   ├── verticaltabwidget.h/cpp # Vertical tab widget
+│       │   ├── tab-widget.css    # Tab widget styles
+│       │   └── tab-widget.js     # Tab widget JavaScript
+│       ├── command-palette/      # Command palette feature
+│       │   ├── commandpalettemanager.h/cpp # Command palette manager
+│       │   ├── commandpalettedialog.h/cpp  # Command palette dialog
+│       │   ├── command-palette.css # Command palette styles
+│       │   └── command-palette.js  # Command palette JavaScript
+│       ├── workspace/            # Workspace management
+│       │   ├── workspacemanager.h/cpp # Workspace manager
+│       │   ├── workspace.css     # Workspace styles
+│       │   └── workspace.js      # Workspace JavaScript
+│       ├── bookmark/             # Bookmark management
+│       │   ├── bookmarkmanager.h/cpp # Bookmark manager
+│       │   ├── bookmark.css      # Bookmark styles
+│       │   └── bookmark.js       # Bookmark JavaScript
+│       └── picture-in-picture/   # Picture-in-Picture feature
+│           ├── pictureinpicturemanager.h/cpp # PiP manager
+│           ├── pip.css           # PiP styles
+│           └── pip.js            # PiP JavaScript implementation
+├── styles/                       # Application stylesheets
+│   └── styles.qss               # Global application styles
+├── tests/                        # Test pages and documentation
+│   ├── debug_test.html          # Debug test page
+│   ├── video_test.html          # Video functionality test
+│   ├── pip_test.html            # Picture-in-Picture test
+│   ├── pip-test.css             # PiP test styles
+│   ├── pip-test.js              # PiP test JavaScript
+│   ├── pip_integration_test.html # PiP integration test
+│   ├── test_page.html           # General test page
+│   └── README.md                # Test documentation
+├── scripts/                      # Build scripts
+│   ├── build_debug.sh           # Debug build script
+│   ├── build_release.sh         # Release build script
+│   └── README.md                # Build documentation
+├── docs/                         # Documentation
+│   ├── README.md                # Documentation overview
+│   └── images/                  # Documentation images
+│       ├── commandpalette.png
+│       ├── developertool.png
+│       ├── fullscrean.png
+│       └── tabbar.png
+├── build/                        # Build output (generated)
+├── resources.qrc                 # Qt resource file
+└── CMakeLists.txt               # CMake build configuration
 ```
 
 ## Architecture
 
-The application follows a manager pattern to separate concerns:
+The application follows a **feature-based architecture** with clear separation of concerns:
+
+### Core Components
+- **MainWindow**: Central application window with integrated UI management
+- **WebView**: Enhanced web view with custom JavaScript injection capabilities
+- **VerticalTabWidget**: Modern tab management with vertical layout
+
+### Feature Managers
+Each feature is organized in its own folder containing:
+- **C++ Manager Classes**: Business logic and Qt integration
+- **CSS Files**: Feature-specific styling
+- **JavaScript Files**: Client-side functionality and enhancements
+
+#### Feature Organization:
+- **🎥 Picture-in-Picture**: Video PiP functionality with custom API implementation
+- **⌘ Command Palette**: Quick search and command execution system
+- **📁 Workspace Management**: Multiple workspace and session support
+- **🔖 Bookmark Management**: Organized bookmark system with folder support
+- **📑 Tab Management**: Enhanced tab navigation with vertical layout
+- **🌐 WebView Enhancement**: Custom web page enhancements and integrations
+
+### Benefits of Feature-Based Architecture:
+- **Modularity**: Each feature is self-contained
+- **Maintainability**: Easy to locate and modify feature-specific code
+- **Scalability**: Simple to add new features
+- **Code Reusability**: Shared CSS/JS components
+- **Clear Dependencies**: Feature interactions are explicit
 
 - **自動非表示**: サイドバーは自動的に非表示（マウスがサイドバー上にある間は表示維持）
 - **滑らかなアニメーション**: 250ms のスムーズなスライドアニメーション
