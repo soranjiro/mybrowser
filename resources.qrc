@@ -1,9 +1,9 @@
 <RCC>
     <qresource prefix="/">
-        <!-- Application styles -->
-        <file>styles/styles.qss</file>
-
         <!-- Feature-specific resources -->
+        <!-- Main Window -->
+        <file>src/features/main-window/styles.qss</file>
+
         <!-- Picture-in-Picture -->
         <file>src/features/picture-in-picture/pip.css</file>
         <file>src/features/picture-in-picture/pip.js</file>
@@ -26,8 +26,5 @@
 
         <!-- WebView Enhancement -->
         <file>src/features/webview/webview-enhancement.js</file>
-
-        <!-- Main Window -->
-        <file>src/features/main-window/styles.qss</file>
     </qresource>
 </RCC>

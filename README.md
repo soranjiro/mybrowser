@@ -47,8 +47,6 @@ mybrowser/
 │           ├── pictureinpicturemanager.h/cpp # PiP manager
 │           ├── pip.css           # PiP styles
 │           └── pip.js            # PiP JavaScript implementation
-├── styles/                       # Application stylesheets
-│   └── styles.qss               # Global application styles
 ├── tests/                        # Test pages and documentation
 │   ├── debug_test.html          # Debug test page
 │   ├── video_test.html          # Video functionality test
@@ -211,8 +209,6 @@ mybrowser/
 │   ├── workspacemanager.* # ワークスペース管理
 │   ├── bookmarkmanager.*  # ブックマーク管理
 │   └── ui_constants.h     # UI定数定義
-├── styles/                 # スタイルシート
-│   └── styles.qss         # アプリケーションスタイル
 ├── build/                 # ビルド出力
 ├── resources.qrc          # Qtリソースファイル
 └── CMakeLists.txt         # CMakeビルド設定

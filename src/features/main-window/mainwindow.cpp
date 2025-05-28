@@ -781,10 +781,10 @@ void MainWindow::closeEvent(QCloseEvent *event) {
 }
 
 void MainWindow::loadStyleSheet() {
-  QFile file(":/styles/styles.qss");
+  QFile file(":/src/features/main-window/styles.qss");
   if (!file.exists()) {
     // Fallback to file system
-    file.setFileName(QDir::currentPath() + "/styles/styles.qss");
+    file.setFileName(QDir::currentPath() + "/src/features/main-window/styles.qss");
   }
 
   if (file.open(QFile::ReadOnly | QFile::Text)) {
