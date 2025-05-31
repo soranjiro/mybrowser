@@ -1,120 +1,88 @@
-# MyBrowser - Qt WebEngine Browser
+# MyBrowser - Qt WebEngine ブラウザ
 
-A modern Qt-based web browser with advanced features including Picture-in-Picture video support, command palette, and workspace management.
+ピクチャインピクチャビデオサポート、コマンドパレット、ワークスペース管理などの高度な機能を備えたモダンな Qt ベースの Web ブラウザです。
 
-## Features
+## 主な機能
 
-- **Pi## ビルドと実行 eo Support**: Automatic PiP controls for video content
-- **Command Palette**: Quick search and command execution (Ctrl+K)
-- **Workspace Management**: Multiple workspace and session support
-- **Advanced Tab Management**: Vertical tab widget with enhanced navigation
-- **Bookmark Management**: Organized bookmark system
-- **Modern UI**: Clean, responsive interface with custom styling
+- **🎥 ピクチャインピクチャサポート**: ビデオコンテンツの自動 PiP コントロール
+- **⌘ コマンドパレット**: クイック検索とコマンド実行（Ctrl+K）
+- **📁 ワークスペース管理**: 複数ワークスペースとセッションのサポート
+- **📑 高度なタブ管理**: 拡張ナビゲーション付き垂直タブウィジェット
+- **🔖 ブックマーク管理**: 整理されたブックマークシステム
+- **🎨 モダン UI**: クリーンでレスポンシブなカスタムスタイリングインターフェース
 
-## Project Structure
+## スクリーンショット
+
+|                   フルスクリーン                    |                    タブバー                    |
+| :-------------------------------------------------: | :--------------------------------------------: |
+|    ![フルスクリーン](docs/images/fullscreen.png)    |      ![タブバー](docs/images/tabbar.png)       |
+|                **コマンドパレット**                 |                **開発者ツール**                |
+| ![コマンドパレット](docs/images/commandpalette.png) | ![開発者ツール](docs/images/developertool.png) |
+
+
+## プロジェクト構造
 
 ```
 mybrowser/
-├── src/                           # Source code
-│   ├── main.cpp                  # Application entry point
-│   ├── core/                     # Core utilities and constants
-│   │   └── ui_constants.h        # UI constants and definitions
-│   └── features/                 # Feature-based organization
-│       ├── main-window/          # Main window implementation
-│       │   ├── mainwindow.h/cpp  # Main window class
-│       │   └── styles.qss        # Main window styles
-│       ├── webview/              # Web view components
-│       │   ├── webview.h/cpp     # Enhanced web view implementation
-│       │   └── webview-enhancement.js # Web view JavaScript enhancements
-│       ├── tab-widget/           # Tab management
-│       │   ├── verticaltabwidget.h/cpp # Vertical tab widget
-│       │   ├── tab-widget.css    # Tab widget styles
-│       │   └── tab-widget.js     # Tab widget JavaScript
-│       ├── command-palette/      # Command palette feature
-│       │   ├── commandpalettemanager.h/cpp # Command palette manager
-│       │   ├── commandpalettedialog.h/cpp  # Command palette dialog
-│       │   ├── command-palette.css # Command palette styles
-│       │   └── command-palette.js  # Command palette JavaScript
-│       ├── workspace/            # Workspace management
-│       │   ├── workspacemanager.h/cpp # Workspace manager
-│       │   ├── workspace.css     # Workspace styles
-│       │   └── workspace.js      # Workspace JavaScript
-│       ├── bookmark/             # Bookmark management
-│       │   ├── bookmarkmanager.h/cpp # Bookmark manager
-│       │   ├── bookmark.css      # Bookmark styles
-│       │   └── bookmark.js       # Bookmark JavaScript
-│       └── picture-in-picture/   # Picture-in-Picture feature
-│           ├── pictureinpicturemanager.h/cpp # PiP manager
-│           ├── pip.css           # PiP styles
-│           └── pip.js            # PiP JavaScript implementation
-├── tests/                        # Test pages and documentation
-│   ├── debug_test.html          # Debug test page
-│   ├── video_test.html          # Video functionality test
-│   ├── pip_test.html            # Picture-in-Picture test
-│   ├── pip-test.css             # PiP test styles
-│   ├── pip-test.js              # PiP test JavaScript
-│   ├── pip_integration_test.html # PiP integration test
-│   ├── test_page.html           # General test page
-│   └── README.md                # Test documentation
-├── scripts/                      # Build scripts
-│   ├── build_debug.sh           # Debug build script
-│   ├── build_release.sh         # Release build script
-│   └── README.md                # Build documentation
-├── docs/                         # Documentation
-│   ├── README.md                # Documentation overview
-│   └── images/                  # Documentation images
-│       ├── commandpalette.png
-│       ├── developertool.png
-│       ├── fullscrean.png
-│       └── tabbar.png
-├── build/                        # Build output (generated)
-├── resources.qrc                 # Qt resource file
-└── CMakeLists.txt               # CMake build configuration
+├── src/                           # ソースコード
+│   ├── main.cpp                  # アプリケーションエントリーポイント
+│   ├── core/                     # コアユーティリティと定数
+│   └── features/                 # 機能ベースの組織化
+│       ├── main-window/          # メインウィンドウ実装
+│       ├── webview/              # Webビューコンポーネント
+│       ├── tab-widget/           # タブ管理
+│       ├── command-palette/      # コマンドパレット機能
+│       ├── workspace/            # ワークスペース管理
+│       ├── bookmark/             # ブックマーク管理
+│       └── picture-in-picture/   # ピクチャインピクチャ機能
+├── tests/                        # テストページとドキュメント
+├── scripts/                      # ビルドスクリプト
+│   ├── build_debug.sh           # デバッグビルドスクリプト
+│   ├── build_release.sh         # リリースビルドスクリプト
+├── docs/                         # ドキュメント
+├── build/                        # ビルド出力（生成される）
+├── resources.qrc                 # Qt リソースファイル
+└── CMakeLists.txt               # CMake ビルド設定
 ```
 
-## Architecture
+## アーキテクチャ
 
-The application follows a **feature-based architecture** with clear separation of concerns:
+アプリケーションは明確な関心の分離を持つ **機能ベースのアーキテクチャ** に従っています：
 
-### Core Components
+### コアコンポーネント
 
-- **MainWindow**: Central application window with integrated UI management
-- **WebView**: Enhanced web view with custom JavaScript injection capabilities
-- **VerticalTabWidget**: Modern tab management with vertical layout
+- **MainWindow**: 統合 UI 管理を備えた中央アプリケーションウィンドウ
+- **WebView**: カスタム JavaScript 注入機能を備えた拡張 Web ビュー
+- **VerticalTabWidget**: 垂直レイアウトによるモダンなタブ管理
 
-### Feature Managers
+### 機能マネージャー
 
-Each feature is organized in its own folder containing:
+各機能は、以下を含む独自のフォルダーに整理されています：
 
-- **C++ Manager Classes**: Business logic and Qt integration
-- **CSS Files**: Feature-specific styling
-- **JavaScript Files**: Client-side functionality and enhancements
+- **C++ マネージャークラス**: ビジネスロジックと Qt 統合
+- **CSS ファイル**: 機能固有のスタイリング
+- **JavaScript ファイル**: クライアントサイド機能と拡張
 
-#### Feature Organization:
+#### 機能の構成：
 
-- **🎥 Picture-in-Picture**: Video PiP functionality with custom API implementation
-- **⌘ Command Palette**: Quick search and command execution system
-- **📁 Workspace Management**: Multiple workspace and session support
-- **🔖 Bookmark Management**: Organized bookmark system with folder support
-- **📑 Tab Management**: Enhanced tab navigation with vertical layout
-- **🌐 WebView Enhancement**: Custom web page enhancements and integrations
+- **🎥 ピクチャインピクチャ**: カスタム API 実装によるビデオ PiP 機能
+- **⌘ コマンドパレット**: クイック検索とコマンド実行システム
+- **📁 ワークスペース管理**: 複数ワークスペースとセッションサポート
+- **🔖 ブックマーク管理**: フォルダサポート付き整理されたブックマークシステム
+- **📑 タブ管理**: 垂直レイアウトによる拡張タブナビゲーション
+- **🌐 Web ビュー拡張**: カスタム Web ページ拡張と統合
 
-### Benefits of Feature-Based Architecture:
+### 機能ベースアーキテクチャの利点：
 
-- **Modularity**: Each feature is self-contained
-- **Maintainability**: Easy to locate and modify feature-specific code
-- **Scalability**: Simple to add new features
-- **Code Reusability**: Shared CSS/JS components
-- **Clear Dependencies**: Feature interactions are explicit
+- **モジュラリティ**: 各機能は自己完結型
+- **保守性**: 機能固有のコードの場所特定と変更が容易
+- **拡張性**: 新機能の追加が簡単
+- **明確な依存関係**: 機能間の相互作用が明示的
+
+### 🎯 サイドバー機能
 
 - **自動非表示**: サイドバーは自動的に非表示（マウスがサイドバー上にある間は表示維持）
 - **滑らかなアニメーション**: 250ms のスムーズなスライドアニメーション
-
-|                フルスクリーン                |                タブバー                 |
-| :------------------------------------------: | :-------------------------------------: |
-|    ![フルスクリーン](docs/fullscrean.png)    |      ![タブバー](docs/tabbar.png)       |
-|             **コマンドパレット**             |            **開発者ツール**             |
-| ![コマンドパレット](docs/commandpalette.png) | ![開発者ツール](docs/developertool.png) |
 
 ### 🔧 UI/UX 機能
 
@@ -136,8 +104,7 @@ Each feature is organized in its own folder containing:
 | ショートカット | 機能                        |
 | -------------- | --------------------------- |
 | `Ctrl+S`       | サイドバー表示切り替え      |
-| `Ctrl+T`       | クイック検索（Google 検索） |
-| `Ctrl+Shift+T` | 新しいタブ                  |
+| `Ctrl+T`       | コマンドパレット（Google 検索） |
 | `Ctrl+W`       | タブを閉じる                |
 | `Ctrl+R`       | ページ更新                  |
 | `Ctrl+Shift+I` | 開発者ツール                |
@@ -196,73 +163,3 @@ make
 # アプリケーション実行
 ./MyBrowser
 ```
-
-## プロジェクト構造
-
-```
-mybrowser/
-├── src/                    # ソースコード
-│   ├── main.cpp           # エントリーポイント
-│   ├── mainwindow.*       # メインウィンドウ
-│   ├── webview.*          # Webビューコンポーネント
-│   ├── verticaltabwidget.* # 垂直タブウィジェット
-│   ├── workspacemanager.* # ワークスペース管理
-│   ├── bookmarkmanager.*  # ブックマーク管理
-│   └── ui_constants.h     # UI定数定義
-├── build/                 # ビルド出力
-├── resources.qrc          # Qtリソースファイル
-└── CMakeLists.txt         # CMakeビルド設定
-```
-
-## UI 改善点
-
-### 1. オーバーレイサイドバーシステム
-
-- **イベントフィルタリング**: 親ウィンドウでのマウス追跡
-- **精密ホバー検出**: 25px の左端検出ゾーン
-- **右側境界検出**: 300px を超えると自動非表示
-- **スムーズアニメーション**: QPropertyAnimation で 250ms のスライド
-
-### 2. クイック検索機能
-
-- `Ctrl+T` で Google 検索ダイアログ
-- URL エンコーディングで安全な検索クエリ
-- 現在タブまたは新規タブでの検索結果表示
-
-### 3. タブの視認性向上
-
-- 垂直レイアウトでタブ名を完全表示
-- ダークテーマで目への負担軽減
-- テキスト色変更による状態表示
-
-### 4. ワークスペース UI 改善
-
-- サイドバー内統合ワークスペースツールバー
-- グラデーション背景とモダンなボタンデザイン
-- 色分けされたアクション（削除は赤色）
-
-### 5. 統合ブックマーク
-
-- サイドバー内ブックマークパネル
-- フォルダー構造のサポート
-- ワンクリックでのブックマークナビゲーション
-
-### 6. マウス追跡の改善
-
-- `setMouseTracking(true)` で連続追跡
-- eventFilter での親ウィンドウ監視
-- 複数レベルでのホバー検出
-
-### 4. 全体的なスタイリング
-
-- 統一された色彩設計
-- アクセシビリティを考慮したコントラスト
-- モダンなフラットデザイン
-
-## 今後の改善予定
-
-- [ ] タブドラッグ&ドロップ機能
-- [ ] カスタムテーマ設定
-- [ ] プラグインシステム
-- [ ] より詳細な履歴管理
-- [ ] パフォーマンス最適化
