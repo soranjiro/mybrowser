@@ -20,11 +20,11 @@ class TabWidgetHandler {
 
   setupKeyboardShortcuts() {
     document.addEventListener("keydown", (e) => {
-      // Ctrl+T または Cmd+T で新しいタブ
-      if ((e.ctrlKey || e.metaKey) && e.key === "t") {
-        e.preventDefault();
-        this.openNewTab();
-      }
+      // Ctrl+T または Cmd+T は処理しない（コマンドパレットで処理される）
+      // if ((e.ctrlKey || e.metaKey) && e.key === "t") {
+      //   e.preventDefault();
+      //   this.openNewTab();
+      // }
 
       // Ctrl+W または Cmd+W でタブを閉じる
       if ((e.ctrlKey || e.metaKey) && e.key === "w") {

@@ -479,6 +479,83 @@ WebView::WebView(QWidget *parent) : QWebEngineView(parent), devToolsView(nullptr
 
   // Enable gesture recognition for swipe gestures
   grabGesture(Qt::SwipeGesture);
+  grabGesture(Qt::PanGesture); // トラックパッドでのスワイプをより感度よく検出
+
+  // JavaScriptでトラックパッドスワイプを検出
+  connect(this, &QWebEngineView::loadFinished, this, [this](bool ok) {
+    if (ok) {
+      QString swipeScript = R"(
+        (function() {
+          let startX = 0;
+          let startY = 0;
+          let startTime = 0;
+
+          // Wait for QWebChannel to be available
+          function initializeSwipeHandling() {
+            if (typeof qt !== 'undefined' && qt.webChannelTransport && typeof mainWindow !== 'undefined') {
+              console.log('WebChannel available, setting up swipe handlers');
+
+              // マウスホイールイベントでスワイプを検出（macOSトラックパッド対応）
+              document.addEventListener('wheel', function(e) {
+                // 水平スクロールの検出
+                if (Math.abs(e.deltaX) > Math.abs(e.deltaY) && Math.abs(e.deltaX) > 30) {
+                  if (e.deltaX > 0) {
+                    // 右スワイプ - 戻る
+                    console.log('Trackpad swipe back detected');
+                    mainWindow.handleSwipeBack();
+                  } else {
+                    // 左スワイプ - 進む
+                    console.log('Trackpad swipe forward detected');
+                    mainWindow.handleSwipeForward();
+                  }
+                }
+              }, { passive: true });
+
+              // タッチイベントでもスワイプを検出
+              document.addEventListener('touchstart', function(e) {
+                if (e.touches.length === 1) {
+                  startX = e.touches[0].clientX;
+                  startY = e.touches[0].clientY;
+                  startTime = Date.now();
+                }
+              }, { passive: true });
+
+              document.addEventListener('touchend', function(e) {
+                if (e.changedTouches.length === 1 && startTime > 0) {
+                  const endX = e.changedTouches[0].clientX;
+                  const endY = e.changedTouches[0].clientY;
+                  const deltaX = endX - startX;
+                  const deltaY = endY - startY;
+                  const deltaTime = Date.now() - startTime;
+
+                  // スワイプの条件: 水平方向の移動が垂直方向より大きく、十分な距離で短時間
+                  if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > 100 && deltaTime < 500) {
+                    if (deltaX > 0) {
+                      // 右スワイプ - 戻る
+                      console.log('Touch swipe back detected');
+                      mainWindow.handleSwipeBack();
+                    } else {
+                      // 左スワイプ - 進む
+                      console.log('Touch swipe forward detected');
+                      mainWindow.handleSwipeForward();
+                    }
+                  }
+                  startTime = 0;
+                }
+              }, { passive: true });
+            } else {
+              // Retry after a short delay
+              setTimeout(initializeSwipeHandling, 100);
+            }
+          }
+
+          // Start initialization
+          initializeSwipeHandling();
+        })();
+      )";
+      page()->runJavaScript(swipeScript);
+    }
+  });
 
   // Enable right-click context menu with "Inspect Element" option
   setContextMenuPolicy(Qt::CustomContextMenu);
@@ -688,28 +765,43 @@ void WebView::keyPressEvent(QKeyEvent *event) {
 }
 
 void WebView::contextMenuEvent(QContextMenuEvent *event) {
+  // デフォルトのコンテキストメニューを無効化して、カスタムメニューのみ表示
   QMenu *menu = new QMenu(this);
 
-  // Add basic navigation actions
-  QAction *backAction = menu->addAction("戻る");
+  // 基本的なナビゲーションアクション（英語で統一）
+  QAction *backAction = menu->addAction("Back");
   backAction->setEnabled(page() && page()->history()->canGoBack());
   connect(backAction, &QAction::triggered, [this]() { page()->history()->back(); });
 
-  QAction *forwardAction = menu->addAction("進む");
+  QAction *forwardAction = menu->addAction("Forward");
   forwardAction->setEnabled(page() && page()->history()->canGoForward());
   connect(forwardAction, &QAction::triggered, [this]() { page()->history()->forward(); });
 
-  QAction *reloadAction = menu->addAction("再読み込み");
+  QAction *reloadAction = menu->addAction("Reload");
   connect(reloadAction, &QAction::triggered, [this]() { page()->triggerAction(QWebEnginePage::Reload); });
 
   menu->addSeparator();
 
-  // Add Picture-in-Picture action
-  QAction *pipAction = menu->addAction("ピクチャーインピクチャー");
+  // ページアクションを英語で追加
+  QAction *copyAction = menu->addAction("Copy");
+  copyAction->setEnabled(page()->action(QWebEnginePage::Copy)->isEnabled());
+  connect(copyAction, &QAction::triggered, [this]() { page()->triggerAction(QWebEnginePage::Copy); });
+
+  QAction *pasteAction = menu->addAction("Paste");
+  pasteAction->setEnabled(page()->action(QWebEnginePage::Paste)->isEnabled());
+  connect(pasteAction, &QAction::triggered, [this]() { page()->triggerAction(QWebEnginePage::Paste); });
+
+  QAction *selectAllAction = menu->addAction("Select All");
+  connect(selectAllAction, &QAction::triggered, [this]() { page()->triggerAction(QWebEnginePage::SelectAll); });
+
+  menu->addSeparator();
+
+  // Picture-in-Picture action
+  QAction *pipAction = menu->addAction("Picture in Picture");
   connect(pipAction, &QAction::triggered, this, &WebView::requestPictureInPicture);
 
-  // Add developer tools action
-  QAction *inspectAction = menu->addAction("要素を検証");
+  // Developer tools action
+  QAction *inspectAction = menu->addAction("Inspect Element");
   connect(inspectAction, &QAction::triggered, this, &WebView::showDevTools);
 
   menu->popup(event->globalPos());
@@ -851,4 +943,16 @@ void WebView::focusOutEvent(QFocusEvent *event) {
   qDebug() << "WebView::focusOutEvent - Reason:" << event->reason();
 #endif
   QWebEngineView::focusOutEvent(event);
+}
+
+void WebView::handleSwipeBack() {
+  if (page() && page()->history()->canGoBack()) {
+    page()->history()->back();
+  }
+}
+
+void WebView::handleSwipeForward() {
+  if (page() && page()->history()->canGoForward()) {
+    page()->history()->forward();
+  }
 }
