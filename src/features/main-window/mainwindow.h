@@ -13,6 +13,7 @@
 #include <QTabWidget>
 #include <QToolBar>
 #include <QUrl>
+#include <QWebChannel>
 
 class WebView;
 class VerticalTabWidget;
@@ -54,6 +55,10 @@ public slots:
   void showHistory();
   void showSettings();
   void showDevTools();
+
+  // WebChannel invokable methods for JavaScript communication
+  Q_INVOKABLE void handleSwipeBack();    // スワイプで戻る
+  Q_INVOKABLE void handleSwipeForward(); // スワイプで進む
 
 #ifdef DEBUG_MODE
   void openTestPage(const QString &fileName);
@@ -110,6 +115,9 @@ private:
 
   // For context menu
   QAction *openLinkInNewTabAction;
+
+  // WebChannel for JavaScript communication
+  QWebChannel *webChannel;
 
   // Placeholder for settings
 #ifdef DEBUG_MODE

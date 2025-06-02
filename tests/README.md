@@ -1,40 +1,30 @@
 # Test Pages
 
-This directory contains various HTML test pages for testing browser functionality.
+This directory contains minimal test pages for testing browser functionality.
 
-## Video and Picture-in-Picture Tests
+## Test Pages
 
-### `video_test.html`
+### `click_test.html`
 
-Basic video functionality test page with various video formats and controls.
+Comprehensive click functionality test with:
 
-### `pip_test.html`
+- Button click testing
+- Link click testing (normal, JavaScript, internal, external)
+- Nested element click event testing with stopPropagation
+- Mouse event debugging and logging
+- Visual feedback for interactions
 
-Detailed Picture-in-Picture functionality test with:
+### `pip_test_comprehensive.html`
 
+Complete Picture-in-Picture functionality test with:
+
+- Normal video with PiP enabled
+- Video with `disablePictureInPicture="true"` attribute
+- Local video file loading support
 - PiP API availability detection
-- Manual PiP trigger buttons
-- Video element analysis
-- Debug console output
-
-### `pip_integration_test.html`
-
-Comprehensive PiP integration test with:
-
-- Multiple video sources
-- Automatic attribute removal testing
-- Browser compatibility checks
-- Performance monitoring
-
-## General Tests
-
-### `test_page.html`
-
-General browser functionality test page.
-
-### `debug_test.html`
-
-Debug and development test page for various browser features.
+- Manual PiP control buttons
+- Video state analysis and debugging
+- Comprehensive event logging
 
 ## Usage
 

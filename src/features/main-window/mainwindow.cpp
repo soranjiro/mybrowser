@@ -19,17 +19,22 @@
 #include <QTextStream>
 #include <QToolButton>
 #include <QVBoxLayout>
+#include <QWebChannel>
 #include <QWebEngineHistory>
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent), workspaceManager(nullptr), bookmarkManager(nullptr),
-      pictureInPictureManager(nullptr), commandPaletteManager(nullptr) {
+      pictureInPictureManager(nullptr), commandPaletteManager(nullptr), webChannel(nullptr) {
   // Debug output for homepage URL setting
 #ifdef DEBUG_MODE
   qDebug() << "DEBUG_MODE active - Homepage URL:" << homePageUrl;
 #else
   qDebug() << "RELEASE_MODE active - Homepage URL:" << homePageUrl;
 #endif
+
+  // Initialize WebChannel for JavaScript communication
+  webChannel = new QWebChannel(this);
+  webChannel->registerObject("mainWindow", this);
 
   // Initialize managers FIRST before setupUI
   pictureInPictureManager = new PictureInPictureManager(this);
@@ -461,6 +466,12 @@ WebView *MainWindow::currentWebView() const {
 
 void MainWindow::newTab() {
   WebView *webView = new WebView(this);
+
+  // WebChannelを設定
+  if (webChannel) {
+    webView->page()->setWebChannel(webChannel);
+  }
+
   int index = tabWidget->addTab(webView, "New Tab");
   tabWidget->setCurrentIndex(index);
 
@@ -851,3 +862,18 @@ void MainWindow::openTestPage(const QString &fileName) {
   }
 }
 #endif
+
+// WebChannel invokable methods for JavaScript swipe gesture handling
+void MainWindow::handleSwipeBack() {
+#ifdef DEBUG_MODE
+  qDebug() << "MainWindow::handleSwipeBack called from JavaScript";
+#endif
+  goBack();
+}
+
+void MainWindow::handleSwipeForward() {
+#ifdef DEBUG_MODE
+  qDebug() << "MainWindow::handleSwipeForward called from JavaScript";
+#endif
+  goForward();
+}
