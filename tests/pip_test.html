@@ -3,52 +3,528 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>PiP API テスト</title>
-    <link rel="stylesheet" href="pip-test.css" />
+    <title>Picture-in-Picture機能テスト - MyBrowser</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        margin: 20px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        min-height: 100vh;
+      }
+      .container {
+        background: rgba(255, 255, 255, 0.1);
+        -webkit-backdrop-filter: blur(10px);
+        backdrop-filter: blur(10px);
+        padding: 30px;
+        border-radius: 15px;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        max-width: 1000px;
+        margin: 0 auto;
+      }
+      h1 {
+        text-align: center;
+        margin-bottom: 30px;
+      }
+      .test-section {
+        background: rgba(255, 255, 255, 0.1);
+        padding: 20px;
+        margin: 20px 0;
+        border-radius: 10px;
+      }
+      .video-container {
+        text-align: center;
+        margin: 20px 0;
+      }
+      video {
+        width: 100%;
+        max-width: 500px;
+        border-radius: 8px;
+        margin: 10px 0;
+      }
+      button {
+        padding: 12px 20px;
+        margin: 8px;
+        background: #007bff;
+        color: white;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 14px;
+        transition: background 0.3s;
+      }
+      button:hover {
+        background: #0056b3;
+      }
+      button:disabled {
+        background: #6c757d;
+        opacity: 0.6;
+        cursor: not-allowed;
+      }
+      .status-area {
+        background: rgba(0, 0, 0, 0.3);
+        padding: 20px;
+        border-radius: 8px;
+        margin: 20px 0;
+      }
+      #log {
+        background: #000;
+        color: #0f0;
+        padding: 15px;
+        border-radius: 5px;
+        height: 200px;
+        overflow-y: auto;
+        font-family: monospace;
+        margin-top: 10px;
+      }
+      .api-status {
+        background: rgba(255, 255, 255, 0.2);
+        padding: 15px;
+        border-radius: 5px;
+        margin-bottom: 20px;
+      }
+      .status-supported {
+        color: #28a745;
+        font-weight: bold;
+      }
+      .status-not-supported {
+        color: #dc3545;
+        font-weight: bold;
+      }
+      .video-info {
+        font-size: 14px;
+        color: rgba(255, 255, 255, 0.8);
+        margin: 5px 0;
+      }
+      .warning {
+        background: rgba(255, 193, 7, 0.2);
+        border: 1px solid #ffc107;
+        padding: 10px;
+        border-radius: 5px;
+        margin: 10px 0;
+      }
+    </style>
   </head>
   <body>
-    <div class="test-container">
-      <h1>🎥 Picture-in-Picture API テスト</h1>
+    <div class="container">
+      <h1>🎥 Picture-in-Picture機能テスト</h1>
 
+      <!-- API サポート状況 -->
       <div class="api-status">
         <h2>📋 API サポート状況</h2>
-        <div class="status-item">ページ読み込み後に自動チェックされます...</div>
-      </div>
-
-      <div class="control-section">
-        <h3>🎬 テスト用ビデオ</h3>
-        <video id="testVideo" controls muted>
-          <source
-            src="https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4"
-            type="video/mp4"
-          />
-          <source
-            src="https://www.w3schools.com/html/mov_bbb.mp4"
-            type="video/mp4"
-          />
-          お使いのブラウザはビデオタグをサポートしていません。
-        </video>
-
-        <div class="video-controls">
-          <button onclick="playVideo()">▶️ ビデオ再生</button>
-          <button onclick="testVideoState()">📊 ビデオ状態確認</button>
+        <div id="api-support-info">
+          ページ読み込み後に自動チェックされます...
         </div>
       </div>
 
-      <div class="control-section">
-        <h3>🔄 Picture-in-Picture コントロール</h3>
-        <button onclick="startPiP()">🚀 PiP モード開始</button>
-        <button onclick="exitPiP()">🔚 PiP モード終了</button>
-        <button onclick="testPiPSupport()">🔍 PiP サポート再チェック</button>
+      <!-- 通常のビデオ（PiP有効） -->
+      <div class="test-section">
+        <h2>1. 通常のビデオ（PiP有効）</h2>
+        <div class="video-container">
+          <video id="normalVideo" controls muted>
+            <source
+              src="https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4"
+              type="video/mp4"
+            />
+            <source
+              src="https://www.w3schools.com/html/mov_bbb.mp4"
+              type="video/mp4"
+            />
+            お使いのブラウザはビデオタグをサポートしていません。
+          </video>
+          <div class="video-info">
+            ビデオソース: Big Buck Bunny (サンプル動画)
+          </div>
+        </div>
+        <div>
+          <button onclick="playVideo('normalVideo')">▶️ 再生</button>
+          <button onclick="pauseVideo('normalVideo')">⏸️ 一時停止</button>
+          <button onclick="requestPiP('normalVideo')">🚀 PiP開始</button>
+          <button onclick="checkVideoState('normalVideo')">📊 状態確認</button>
+        </div>
       </div>
 
-      <div class="control-section">
-        <h3>📝 ログ</h3>
+      <!-- disablePictureInPictureが設定されたビデオ -->
+      <div class="test-section">
+        <h2>2. PiP無効ビデオ (disablePictureInPicture="true")</h2>
+        <div class="video-container">
+          <video
+            id="disabledVideo"
+            controls
+            muted
+            disablePictureInPicture="true"
+          >
+            <source
+              src="https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4"
+              type="video/mp4"
+            />
+            <source
+              src="https://www.w3schools.com/html/mov_bbb.mp4"
+              type="video/mp4"
+            />
+            お使いのブラウザはビデオタグをサポートしていません。
+          </video>
+          <div class="video-info">ビデオソース: Elephants Dream (PiP無効)</div>
+        </div>
+        <div class="warning">
+          ⚠️
+          このビデオはdisablePictureInPicture属性が設定されているため、PiPは動作しません。
+        </div>
+        <div>
+          <button onclick="playVideo('disabledVideo')">▶️ 再生</button>
+          <button onclick="pauseVideo('disabledVideo')">⏸️ 一時停止</button>
+          <button onclick="requestPiP('disabledVideo')">
+            🚀 PiP開始（失敗するはず）
+          </button>
+          <button onclick="toggleDisablePiP('disabledVideo')">
+            🔄 PiP制限切り替え
+          </button>
+        </div>
+      </div>
+
+      <!-- ローカルビデオファイル用 -->
+      <div class="test-section">
+        <h2>3. ローカルビデオファイル</h2>
+        <div class="video-container">
+          <video id="localVideo" controls muted>
+            <source src="data:video/mp4;base64," type="video/mp4" />
+            ローカルビデオファイルが設定されていません。
+          </video>
+          <div class="video-info">
+            ローカルビデオファイル用（設定されていない場合は動作しません）
+          </div>
+        </div>
+        <label for="videoFileInput">ローカルビデオファイルを選択:</label>
+        <input
+          type="file"
+          id="videoFileInput"
+          accept="video/*"
+          onchange="loadLocalVideo()"
+          title="ローカルビデオファイルを選択"
+        />
+        <div>
+          <button onclick="playVideo('localVideo')">▶️ 再生</button>
+          <button onclick="requestPiP('localVideo')">🚀 PiP開始</button>
+        </div>
+      </div>
+
+      <!-- PiP全体制御 -->
+      <div class="test-section">
+        <h2>4. PiP全体制御</h2>
+        <div>
+          <button onclick="exitAllPiP()">🔚 全てのPiP終了</button>
+          <button onclick="testAllPiPSupport()">
+            🔍 全ビデオのPiPサポート確認
+          </button>
+          <button onclick="removeAllPiPAttributes()">
+            🗑️ 全ビデオのPiP制限解除
+          </button>
+        </div>
+      </div>
+
+      <!-- ステータス・ログ -->
+      <div class="status-area">
+        <h2>📊 ステータス・ログ</h2>
+        <p>現在のPiPビデオ: <span id="current-pip">なし</span></p>
+        <p>最後のアクション: <span id="last-action">なし</span></p>
         <button onclick="clearLog()">🗑️ ログクリア</button>
         <div id="log"></div>
       </div>
     </div>
 
-    <script src="pip-test.js"></script>
+    <script>
+      let currentPiPVideo = null;
+
+      function log(message, type) {
+        const logDiv = document.getElementById("log");
+        const timestamp = new Date().toLocaleTimeString();
+
+        let prefix = "📄";
+        if (type === "success") prefix = "✅";
+        else if (type === "error") prefix = "❌";
+        else if (type === "warning") prefix = "⚠️";
+
+        logDiv.innerHTML +=
+          "[" + timestamp + "] " + prefix + " " + message + "\n";
+        logDiv.scrollTop = logDiv.scrollHeight;
+        console.log(prefix + " " + message);
+
+        document.getElementById("last-action").textContent =
+          message + " (" + timestamp + ")";
+      }
+
+      function clearLog() {
+        document.getElementById("log").innerHTML = "";
+        log("ログがクリアされました");
+      }
+
+      function updatePiPStatus(videoId) {
+        document.getElementById("current-pip").textContent = videoId || "なし";
+      }
+
+      async function playVideo(videoId) {
+        const video = document.getElementById(videoId);
+        if (!video) {
+          log("❌ ビデオ要素が見つかりません: " + videoId, "error");
+          return;
+        }
+
+        try {
+          await video.play();
+          log("▶️ ビデオ再生開始: " + videoId, "success");
+        } catch (error) {
+          log(
+            "❌ ビデオ再生エラー: " + videoId + " - " + error.message,
+            "error"
+          );
+        }
+      }
+
+      function pauseVideo(videoId) {
+        const video = document.getElementById(videoId);
+        if (!video) {
+          log("❌ ビデオ要素が見つかりません: " + videoId, "error");
+          return;
+        }
+
+        video.pause();
+        log("⏸️ ビデオ一時停止: " + videoId, "info");
+      }
+
+      async function requestPiP(videoId) {
+        log("🚀 PiP開始試行: " + videoId, "info");
+
+        const video = document.getElementById(videoId);
+        if (!video) {
+          log("❌ ビデオ要素が見つかりません: " + videoId, "error");
+          return;
+        }
+
+        if (video.paused) {
+          try {
+            await video.play();
+            log("▶️ PiP用にビデオを再生開始: " + videoId, "info");
+          } catch (error) {
+            log("❌ ビデオ再生失敗: " + error.message, "error");
+            return;
+          }
+        }
+
+        try {
+          const pipWindow = await video.requestPictureInPicture();
+          currentPiPVideo = videoId;
+          updatePiPStatus(videoId);
+          log("✅ PiP開始成功: " + videoId, "success");
+          log(
+            "📏 PiPウィンドウサイズ: " +
+              pipWindow.width +
+              " x " +
+              pipWindow.height,
+            "info"
+          );
+
+          pipWindow.addEventListener("resize", function () {
+            log(
+              "📏 PiPウィンドウリサイズ: " +
+                pipWindow.width +
+                " x " +
+                pipWindow.height,
+              "info"
+            );
+          });
+        } catch (error) {
+          log(
+            "❌ PiP開始エラー: " +
+              videoId +
+              " - " +
+              error.name +
+              ": " +
+              error.message,
+            "error"
+          );
+        }
+      }
+
+      async function exitAllPiP() {
+        log("🔚 全PiP終了試行", "info");
+
+        try {
+          if (document.pictureInPictureElement) {
+            await document.exitPictureInPicture();
+            log("✅ PiP終了成功", "success");
+          } else {
+            log("📌 現在PiPモードのビデオはありません", "info");
+          }
+        } catch (error) {
+          log("❌ PiP終了エラー: " + error.message, "error");
+        }
+      }
+
+      function checkVideoState(videoId) {
+        log("📊 ビデオ状態確認: " + videoId, "info");
+
+        const video = document.getElementById(videoId);
+        if (!video) {
+          log("❌ ビデオ要素が見つかりません: " + videoId, "error");
+          return;
+        }
+
+        log("📌 paused: " + video.paused, "info");
+        log("📌 currentTime: " + video.currentTime.toFixed(2) + "s", "info");
+        log(
+          "📌 duration: " +
+            (video.duration ? video.duration.toFixed(2) : "unknown") +
+            "s",
+          "info"
+        );
+        log("📌 readyState: " + video.readyState, "info");
+        log("📌 networkState: " + video.networkState, "info");
+        log("📌 videoWidth: " + video.videoWidth, "info");
+        log("📌 videoHeight: " + video.videoHeight, "info");
+        log(
+          "📌 disablePictureInPicture: " + video.disablePictureInPicture,
+          "info"
+        );
+      }
+
+      function toggleDisablePiP(videoId) {
+        const video = document.getElementById(videoId);
+        if (!video) {
+          log("❌ ビデオ要素が見つかりません: " + videoId, "error");
+          return;
+        }
+
+        video.disablePictureInPicture = !video.disablePictureInPicture;
+        log(
+          "🔄 " +
+            videoId +
+            " PiP制限: " +
+            (video.disablePictureInPicture ? "有効" : "無効"),
+          "info"
+        );
+      }
+
+      function removeAllPiPAttributes() {
+        const videos = document.querySelectorAll("video");
+        videos.forEach(function (video, index) {
+          if (video.hasAttribute("disablePictureInPicture")) {
+            video.removeAttribute("disablePictureInPicture");
+            log("🗑️ ビデオ" + (index + 1) + "のPiP制限を解除", "info");
+          }
+        });
+      }
+
+      function testAllPiPSupport() {
+        log("=== 全ビデオのPiPサポート確認 ===", "info");
+
+        const videos = document.querySelectorAll("video");
+        videos.forEach(function (video, index) {
+          const videoId = video.id || "video-" + index;
+          log("📹 ビデオ: " + videoId, "info");
+
+          if ("requestPictureInPicture" in video) {
+            log("  ✅ requestPictureInPicture: サポート済み", "success");
+          } else {
+            log("  ❌ requestPictureInPicture: サポートなし", "error");
+          }
+
+          log(
+            "  📌 disablePictureInPicture: " + video.disablePictureInPicture,
+            "info"
+          );
+        });
+      }
+
+      function loadLocalVideo() {
+        const fileInput = document.getElementById("videoFileInput");
+        const video = document.getElementById("localVideo");
+
+        if (fileInput.files && fileInput.files[0]) {
+          const file = fileInput.files[0];
+          const url = URL.createObjectURL(file);
+          video.src = url;
+          log("📁 ローカルビデオファイル読み込み: " + file.name, "success");
+        }
+      }
+
+      function checkPiPSupport() {
+        log("=== PiPサポート確認開始 ===", "info");
+
+        const apiInfo = document.getElementById("api-support-info");
+        let supportInfo = "";
+
+        if ("pictureInPictureEnabled" in document) {
+          const enabled = document.pictureInPictureEnabled;
+          supportInfo +=
+            '<div class="' +
+            (enabled ? "status-supported" : "status-not-supported") +
+            '">document.pictureInPictureEnabled: ' +
+            enabled +
+            "</div>";
+          log(
+            "📌 document.pictureInPictureEnabled: " + enabled,
+            enabled ? "success" : "error"
+          );
+        } else {
+          supportInfo +=
+            '<div class="status-not-supported">document.pictureInPictureEnabled: 利用不可</div>';
+          log("❌ document.pictureInPictureEnabled は利用できません", "error");
+        }
+
+        if ("pictureInPictureElement" in document) {
+          const hasPiP = document.pictureInPictureElement !== null;
+          supportInfo +=
+            "<div>現在のPiP要素: " + (hasPiP ? "あり" : "なし") + "</div>";
+          log("📌 現在のPiP要素: " + (hasPiP ? "あり" : "なし"), "info");
+        }
+
+        apiInfo.innerHTML = supportInfo;
+        log("=== PiPサポート確認完了 ===", "info");
+      }
+
+      // イベントリスナーの設定
+      document.addEventListener("enterpictureinpicture", function (event) {
+        const videoId = event.target.id || "unknown";
+        currentPiPVideo = videoId;
+        updatePiPStatus(videoId);
+        log("🎉 PiPモード開始: " + videoId, "success");
+      });
+
+      document.addEventListener("leavepictureinpicture", function (event) {
+        const videoId = event.target.id || "unknown";
+        currentPiPVideo = null;
+        updatePiPStatus(null);
+        log("👋 PiPモード終了: " + videoId, "info");
+      });
+
+      // ビデオイベントリスナー
+      document.querySelectorAll("video").forEach(function (video) {
+        video.addEventListener("loadedmetadata", function () {
+          log("🎬 ビデオメタデータ読み込み完了: " + video.id, "success");
+        });
+
+        video.addEventListener("canplay", function () {
+          log("▶️ ビデオ再生準備完了: " + video.id, "success");
+        });
+
+        video.addEventListener("error", function (e) {
+          log(
+            "❌ ビデオエラー: " +
+              video.id +
+              " - " +
+              (e.message || "unknown error"),
+            "error"
+          );
+        });
+      });
+
+      // ページ読み込み時の初期化
+      window.addEventListener("load", function () {
+        log("🚀 PiPテストページが読み込まれました", "success");
+        setTimeout(function () {
+          checkPiPSupport();
+        }, 1000);
+      });
+    </script>
   </body>
 </html>
