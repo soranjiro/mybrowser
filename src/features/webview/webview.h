@@ -36,7 +36,10 @@ public:
   void setPage(QWebEnginePage *page); // Allow setting a custom page if needed
 
 public slots:
-  void showDevTools(); // Show developer tools
+  void showDevTools();            // Show developer tools
+  void requestPictureInPicture(); // Request Picture-in-Picture mode
+  void handleSwipeBack();         // Handle back swipe gesture
+  void handleSwipeForward();      // Handle forward swipe gesture
 
 protected:
   QWebEngineView *createWindow(QWebEnginePage::WebWindowType type) override;

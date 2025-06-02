@@ -1,4 +1,4 @@
-#include "mainwindow.h"
+#include "features/main-window/mainwindow.h"
 #include <QApplication>
 #include <QDebug>
 #include <QEvent>
@@ -32,6 +32,20 @@ public:
 int main(int argc, char *argv[]) {
   // Enable developer tools remote debugging before QApplication creation
   qputenv("QTWEBENGINE_REMOTE_DEBUGGING", "9222");
+
+  // Enable Picture-in-Picture API and related features with enhanced flags
+  qputenv("QTWEBENGINE_CHROMIUM_FLAGS",
+          "--enable-features=PictureInPictureAPI,MediaSession,MediaSessionService,OverlayScrollbar "
+          "--enable-picture-in-picture-api "
+          "--enable-blink-features=PictureInPictureAPI "
+          "--force-device-scale-factor=1 "
+          "--autoplay-policy=no-user-gesture-required "
+          "--disable-features=VizDisplayCompositor "
+          "--disable-web-security "
+          "--allow-running-insecure-content "
+          "--disable-extensions-except "
+          "--disable-extensions "
+          "--no-sandbox");
 
   // macOS specific settings for better trackpad/mouse handling
 #ifdef Q_OS_MACOS
@@ -79,8 +93,10 @@ int main(int argc, char *argv[]) {
   globalSettings->setAttribute(QWebEngineSettings::WebGLEnabled, true);
   globalSettings->setAttribute(QWebEngineSettings::Accelerated2dCanvasEnabled, true);
 
-  // Enable autoplay for media
+  // Enable autoplay for media and Picture-in-Picture
   globalSettings->setAttribute(QWebEngineSettings::PlaybackRequiresUserGesture, false);
+  globalSettings->setAttribute(QWebEngineSettings::AllowRunningInsecureContent, true);
+  globalSettings->setAttribute(QWebEngineSettings::AllowWindowActivationFromJavaScript, true);
 
   // Enable focus on navigation
   globalSettings->setAttribute(QWebEngineSettings::FocusOnNavigationEnabled, true);

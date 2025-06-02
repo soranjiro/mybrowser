@@ -1,25 +1,23 @@
-#ifndef QUICKSEARCHDIALOG_H
-#define QUICKSEARCHDIALOG_H
+#ifndef COMMANDPALETTEDIALOG_H
+#define COMMANDPALETTEDIALOG_H
 
-#include <QCompleter>
 #include <QDialog>
-#include <QEvent>
-#include <QKeyEvent>
+#include <QLabel>
 #include <QLineEdit>
 #include <QListWidget>
-#include <QMouseEvent>
 #include <QPropertyAnimation>
 #include <QTimer>
 #include <QVBoxLayout>
 
-class QuickSearchDialog : public QDialog {
+class CommandPaletteDialog : public QDialog {
   Q_OBJECT
 
 public:
-  explicit QuickSearchDialog(QWidget *parent = nullptr);
-  ~QuickSearchDialog(); // Add destructor
-  QString getSearchQuery() const;
+  explicit CommandPaletteDialog(QWidget *parent = nullptr);
+  ~CommandPaletteDialog();
+
   void setSearchHistory(const QStringList &history);
+  void showCentered();
 
 signals:
   void searchRequested(const QString &query);
@@ -32,29 +30,26 @@ protected:
 
 private slots:
   void onTextChanged(const QString &text);
-  void onSuggestionClicked();
+  void onItemClicked();
   void updateSuggestions();
 
 private:
   void setupUI();
   void populateSuggestions(const QString &query);
   void populateCommands(const QString &query);
-  void selectNextSuggestion();
-  void selectPreviousSuggestion();
-  void executeSearch();
+  void selectNextItem();
+  void selectPreviousItem();
+  void executeSelected();
+  void executeSearch(const QString &query);
   void executeCommand(const QString &command);
-  void animateResize(int newHeight);
-  bool isHeaderItem(QListWidgetItem *item);
+  bool isHeaderItem(QListWidgetItem *item) const;
 
-  QLineEdit *searchLineEdit;
-  QListWidget *suggestionsWidget;
+  QLineEdit *searchInput;
+  QListWidget *suggestionsList;
   QVBoxLayout *mainLayout;
   QTimer *searchTimer;
-  // Animation properties removed for immediate display
   QStringList searchHistory;
-  QStringList currentSuggestions;
-  QStringList currentCommands;
-  int selectedSuggestionIndex;
+  int selectedIndex;
 };
 
-#endif // QUICKSEARCHDIALOG_H
+#endif // COMMANDPALETTEDIALOG_H

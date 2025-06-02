@@ -1,9 +1,11 @@
 #include "mainwindow.h"
-#include "bookmarkmanager.h"
-#include "quicksearchdialog.h"
-#include "verticaltabwidget.h"
-#include "webview.h"
-#include "workspacemanager.h"
+#include "../bookmark/bookmarkmanager.h"
+#include "../command-palette/commandpalettemanager.h"
+#include "../picture-in-picture/pictureinpicturemanager.h"
+#include "../tab-widget/verticaltabwidget.h"
+#include "../webview/webview.h"
+#include "../workspace/workspacemanager.h"
+#include <QCoreApplication>
 #include <QCursor>
 #include <QDir>
 #include <QDockWidget>
@@ -17,10 +19,12 @@
 #include <QTextStream>
 #include <QToolButton>
 #include <QVBoxLayout>
+#include <QWebChannel>
 #include <QWebEngineHistory>
 
 MainWindow::MainWindow(QWidget *parent)
-    : QMainWindow(parent), workspaceManager(nullptr), bookmarkManager(nullptr), quickSearchDialog(nullptr) {
+    : QMainWindow(parent), workspaceManager(nullptr), bookmarkManager(nullptr),
+      pictureInPictureManager(nullptr), commandPaletteManager(nullptr), webChannel(nullptr) {
   // Debug output for homepage URL setting
 #ifdef DEBUG_MODE
   qDebug() << "DEBUG_MODE active - Homepage URL:" << homePageUrl;
@@ -28,28 +32,22 @@ MainWindow::MainWindow(QWidget *parent)
   qDebug() << "RELEASE_MODE active - Homepage URL:" << homePageUrl;
 #endif
 
+  // Initialize WebChannel for JavaScript communication
+  webChannel = new QWebChannel(this);
+  webChannel->registerObject("mainWindow", this);
+
+  // Initialize managers FIRST before setupUI
+  pictureInPictureManager = new PictureInPictureManager(this);
+  commandPaletteManager = new CommandPaletteManager(this);
+
   loadStyleSheet();
   setupUI();
   setupConnections();
   newTab(); // Open a default tab
-
-  // Load search history from file
-  loadSearchHistory();
-
-  // Initialize command palette (quick search dialog)
-  quickSearchDialog = new QuickSearchDialog(this);
-  quickSearchDialog->setSearchHistory(searchHistory);
-  connect(quickSearchDialog, &QuickSearchDialog::searchRequested, this, [this](const QString &query) {
-    handleQuickSearch(query);
-  });
-  connect(quickSearchDialog, &QuickSearchDialog::commandRequested, this, [this](const QString &command) {
-    handleCommand(command);
-  });
 }
 
 MainWindow::~MainWindow() {
-  // Save search history before destroying
-  saveSearchHistory();
+  // Cleanup is handled by Qt's parent-child relationship
 }
 
 void MainWindow::setupUI() {
@@ -165,7 +163,7 @@ void MainWindow::setupUI() {
 
 void MainWindow::createActions() {
   newTabAction = new QAction(QIcon::fromTheme("tab-new"), "New Tab", this);
-  newTabAction->setShortcut(QKeySequence::AddTab);
+  // ショートカットを削除 - コマンドパレット経由でのみ新しいタブを作成
 
   closeTabAction = new QAction(QIcon::fromTheme("window-close"), "Close Tab", this);
   closeTabAction->setShortcut(QKeySequence::Close);
@@ -192,10 +190,6 @@ void MainWindow::createActions() {
   devToolsAction = new QAction("Developer Tools", this);
   devToolsAction->setShortcut(QKeySequence("Ctrl+Shift+I"));
 
-  // Command palette action
-  quickSearchAction = new QAction("Command Palette", this);
-  quickSearchAction->setShortcut(QKeySequence("Ctrl+T"));
-
   // Toggle panel actions - only keep tab bar toggle with Cmd+S
   toggleTabBarAction = new QAction("Toggle Sidebar", this);
   toggleTabBarAction->setShortcut(QKeySequence("Ctrl+S"));
@@ -203,6 +197,35 @@ void MainWindow::createActions() {
   toggleTabBarAction->setChecked(false); // Default to hidden
 
   openLinkInNewTabAction = new QAction("Open Link in New Tab", this);
+
+  // Setup manager actions
+  if (pictureInPictureManager) {
+    pictureInPictureManager->setupActions();
+  }
+  if (commandPaletteManager) {
+    qDebug() << "Setting up command palette manager actions...";
+    commandPaletteManager->setupActions();
+
+    QAction *cmdAction = commandPaletteManager->getCommandPaletteAction();
+    if (cmdAction) {
+      qDebug() << "Adding command palette action to MainWindow with shortcuts:";
+      for (const QKeySequence &shortcut : cmdAction->shortcuts()) {
+        qDebug() << "  -" << shortcut.toString();
+      }
+      this->addAction(cmdAction);
+      qDebug() << "Action added successfully. MainWindow actions count:" << this->actions().size();
+    } else {
+      qDebug() << "ERROR: commandPaletteAction is null!";
+    }
+
+#ifdef QT_DEBUG
+    QAction *testAction = commandPaletteManager->getOpenTestPageAction();
+    if (testAction) {
+      qDebug() << "Adding test page action with shortcut:" << testAction->shortcut().toString();
+      this->addAction(testAction);
+    }
+#endif
+  }
 }
 
 void MainWindow::createToolbars() {
@@ -303,6 +326,12 @@ void MainWindow::createMenus() {
 
   viewMenu->addSeparator();
   viewMenu->addAction(toggleTabBarAction);
+  viewMenu->addSeparator();
+
+  // Add manager actions to menus
+  if (pictureInPictureManager) {
+    pictureInPictureManager->addToMenu(viewMenu);
+  }
 
   QMenu *historyMenu = menuBar()->addMenu("&History");
   historyMenu->addAction(viewHistoryAction);
@@ -314,11 +343,56 @@ void MainWindow::createMenus() {
   // Dynamically populate bookmark items or show a dialog
 
   QMenu *toolsMenu = menuBar()->addMenu("&Tools");
-  toolsMenu->addAction(quickSearchAction);
+  if (commandPaletteManager && commandPaletteManager->getCommandPaletteAction()) {
+    toolsMenu->addAction(commandPaletteManager->getCommandPaletteAction());
+  }
+#ifdef QT_DEBUG
+  if (commandPaletteManager && commandPaletteManager->getOpenTestPageAction()) {
+    toolsMenu->addAction(commandPaletteManager->getOpenTestPageAction());
+  }
+#endif
   toolsMenu->addSeparator();
   toolsMenu->addAction(settingsAction);
   toolsMenu->addSeparator();
   toolsMenu->addAction(devToolsAction);
+
+#ifdef DEBUG_MODE
+  // Add debug menu for easy access to test pages
+  QMenu *debugMenu = menuBar()->addMenu("&Debug");
+
+  QAction *openVideoTestAction = debugMenu->addAction("Video Test Page");
+  connect(openVideoTestAction, &QAction::triggered, this, [this]() {
+    openTestPage("video_test.html");
+  });
+
+  QAction *openPiPTestAction = debugMenu->addAction("PiP Test Page");
+  connect(openPiPTestAction, &QAction::triggered, this, [this]() {
+    openTestPage("pip_test.html");
+  });
+
+  QAction *openPiPIntegrationTestAction = debugMenu->addAction("PiP Integration Test");
+  connect(openPiPIntegrationTestAction, &QAction::triggered, this, [this]() {
+    openTestPage("pip_integration_test.html");
+  });
+
+  QAction *openDebugTestAction = debugMenu->addAction("Debug Test Page");
+  connect(openDebugTestAction, &QAction::triggered, this, [this]() {
+    openTestPage("debug_test.html");
+  });
+
+  debugMenu->addSeparator();
+
+  QAction *openTestsDirectoryAction = debugMenu->addAction("Open Tests Directory");
+  connect(openTestsDirectoryAction, &QAction::triggered, this, [this]() {
+    if (WebView *view = currentWebView()) {
+      QString testsPath = QDir::currentPath() + "/tests/";
+      view->load(QUrl::fromLocalFile(testsPath));
+    }
+  });
+#endif
+
+  // Add keyboard shortcuts for command palette actions
+  // (Already added in createActions())
 }
 
 void MainWindow::setupConnections() {
@@ -367,7 +441,6 @@ void MainWindow::setupConnections() {
   connect(settingsAction, &QAction::triggered, this, &MainWindow::showSettings);
   connect(devToolsAction, &QAction::triggered, this, &MainWindow::showDevTools);
 
-  connect(quickSearchAction, &QAction::triggered, this, &MainWindow::quickSearch);
   connect(toggleTabBarAction, &QAction::triggered, this, &MainWindow::toggleTabBar);
 
   connect(openLinkInNewTabAction, &QAction::triggered, this, &MainWindow::openLinkInNewTab);
@@ -393,6 +466,12 @@ WebView *MainWindow::currentWebView() const {
 
 void MainWindow::newTab() {
   WebView *webView = new WebView(this);
+
+  // WebChannelを設定
+  if (webChannel) {
+    webView->page()->setWebChannel(webChannel);
+  }
+
   int index = tabWidget->addTab(webView, "New Tab");
   tabWidget->setCurrentIndex(index);
 
@@ -405,6 +484,11 @@ void MainWindow::newTab() {
     if (ok) {
       history.prepend({webView->title(), webView->url()});
       // Limit history size if needed
+
+      // 自動的にすべての動画をPicture-in-Picture対応にする
+      if (pictureInPictureManager) {
+        pictureInPictureManager->enablePiPForAllVideos(webView);
+      }
     }
     backAction->setEnabled(webView->page()->history()->canGoBack());
     forwardAction->setEnabled(webView->page()->history()->canGoForward());
@@ -585,6 +669,12 @@ void MainWindow::handleContextMenuRequested(const QPoint &pos) {
   contextMenu.addSeparator();
   webAction = QWebEnginePage::SelectAll;
   contextMenu.addAction(view->page()->action(webAction));
+  contextMenu.addSeparator();
+
+  // Add manager context menu actions
+  if (pictureInPictureManager) {
+    pictureInPictureManager->addToContextMenu(&contextMenu);
+  }
 
   contextMenu.exec(view->mapToGlobal(pos));
 }
@@ -702,10 +792,10 @@ void MainWindow::closeEvent(QCloseEvent *event) {
 }
 
 void MainWindow::loadStyleSheet() {
-  QFile file(":/styles/styles.qss");
+  QFile file(":/src/features/main-window/styles.qss");
   if (!file.exists()) {
     // Fallback to file system
-    file.setFileName(QDir::currentPath() + "/styles/styles.qss");
+    file.setFileName(QDir::currentPath() + "/src/features/main-window/styles.qss");
   }
 
   if (file.open(QFile::ReadOnly | QFile::Text)) {
@@ -725,220 +815,6 @@ void MainWindow::toggleTabBar() {
   }
 }
 
-void MainWindow::quickSearch() {
-  if (quickSearchDialog) {
-    quickSearchDialog->setSearchHistory(searchHistory);
-    quickSearchDialog->exec();
-  }
-}
-
-void MainWindow::handleQuickSearch(const QString &query) {
-  if (query.isEmpty())
-    return;
-
-  // Add to search history (avoid duplicates)
-  searchHistory.removeAll(query);
-  searchHistory.prepend(query);
-
-  // Keep only last 10 searches
-  if (searchHistory.size() > 10) {
-    searchHistory.removeLast();
-  }
-
-  // Update quick search dialog with new history
-  if (quickSearchDialog) {
-    quickSearchDialog->setSearchHistory(searchHistory);
-  }
-
-  QString urlString;
-
-  // Check if it's a URL
-  if (query.startsWith("http://") || query.startsWith("https://")) {
-    urlString = query;
-  } else if (query.contains(".") && !query.contains(" ") && query.indexOf(".") > 0) {
-    // Looks like a domain, add https://
-    urlString = "https://" + query;
-  } else {
-    // Create Google search URL
-    urlString = QString("https://www.google.com/search?q=%1")
-                    .arg(QUrl::toPercentEncoding(query).constData());
-  }
-
-  // Always create a new tab for quick search results
-  newTab();
-  WebView *view = currentWebView();
-  if (view) {
-    view->setUrl(QUrl(urlString));
-  }
-}
-
-void MainWindow::saveSearchHistory() {
-  QDir appDir = QDir::home();
-  if (!appDir.exists(".mybrowser")) {
-    appDir.mkdir(".mybrowser");
-  }
-
-  QString historyPath = appDir.absoluteFilePath(".mybrowser/search_history.txt");
-  QFile file(historyPath);
-
-  if (file.open(QIODevice::WriteOnly | QIODevice::Text)) {
-    QTextStream out(&file);
-    for (const QString &entry : searchHistory) {
-      out << entry << "\n";
-    }
-  }
-}
-
-void MainWindow::loadSearchHistory() {
-  QDir appDir = QDir::home();
-  QString historyPath = appDir.absoluteFilePath(".mybrowser/search_history.txt");
-  QFile file(historyPath);
-
-  searchHistory.clear();
-
-  if (file.open(QIODevice::ReadOnly | QIODevice::Text)) {
-    QTextStream in(&file);
-    while (!in.atEnd()) {
-      QString line = in.readLine().trimmed();
-      if (!line.isEmpty()) {
-        searchHistory.append(line);
-      }
-    }
-  }
-}
-
-void MainWindow::handleCommand(const QString &command) {
-  QString cmd = command.toLower().trimmed();
-
-  // Navigation commands
-  if (cmd == "new tab" || cmd == "new") {
-    newTab();
-  } else if (cmd == "close tab" || cmd == "close") {
-    closeCurrentTab();
-  } else if (cmd == "reload page" || cmd == "reload" || cmd == "refresh") {
-    reloadPage();
-  } else if (cmd == "hard reload" || cmd == "force reload") {
-    if (WebView *view = currentWebView()) {
-      view->triggerPageAction(QWebEnginePage::ReloadAndBypassCache);
-    }
-  } else if (cmd == "stop loading" || cmd == "stop") {
-    stopLoading();
-  } else if (cmd == "go back" || cmd == "back") {
-    goBack();
-  } else if (cmd == "go forward" || cmd == "forward") {
-    goForward();
-  }
-
-  // Zoom commands
-  else if (cmd == "zoom in" || cmd == "zoom+") {
-    if (WebView *view = currentWebView()) {
-      qreal factor = view->zoomFactor();
-      view->setZoomFactor(factor * 1.25);
-    }
-  } else if (cmd == "zoom out" || cmd == "zoom-") {
-    if (WebView *view = currentWebView()) {
-      qreal factor = view->zoomFactor();
-      view->setZoomFactor(factor * 0.8);
-    }
-  } else if (cmd == "reset zoom" || cmd == "zoom reset") {
-    if (WebView *view = currentWebView()) {
-      view->setZoomFactor(1.0);
-    }
-  }
-
-  // Bookmark commands
-  else if (cmd == "add bookmark" || cmd == "bookmark") {
-    addBookmark();
-  } else if (cmd == "show bookmarks" || cmd == "bookmarks") {
-    showBookmarks();
-  }
-
-  // Workspace commands
-  else if (cmd == "new workspace") {
-    if (workspaceManager) {
-      workspaceManager->createNewWorkspace("New Workspace");
-    }
-  } else if (cmd == "switch workspace") {
-    // Show workspace switcher - this could be enhanced with a list
-    QMessageBox::information(this, "Command Palette", "Workspace switching UI not implemented yet");
-  } else if (cmd == "rename workspace") {
-    if (workspaceManager) {
-      workspaceManager->renameWorkspace(workspaceManager->getCurrentWorkspaceId(), "");
-    }
-  } else if (cmd == "delete workspace") {
-    if (workspaceManager) {
-      workspaceManager->deleteWorkspace(workspaceManager->getCurrentWorkspaceId());
-    }
-  }
-
-  // History and other commands
-  else if (cmd == "show history" || cmd == "history") {
-    showHistory();
-  } else if (cmd == "clear history") {
-    // Clear search history
-    searchHistory.clear();
-    saveSearchHistory();
-    if (quickSearchDialog) {
-      quickSearchDialog->setSearchHistory(searchHistory);
-    }
-    QMessageBox::information(this, "Command Palette", "Search history cleared");
-  } else if (cmd == "show downloads" || cmd == "downloads") {
-    QMessageBox::information(this, "Command Palette", "Downloads view not implemented yet");
-  }
-
-  // Developer tools
-  else if (cmd == "developer tools" || cmd == "devtools" || cmd == "dev tools") {
-    showDevTools();
-  } else if (cmd == "view source" || cmd == "source") {
-    if (WebView *view = currentWebView()) {
-      view->triggerPageAction(QWebEnginePage::ViewSource);
-    }
-  }
-
-  // Page actions
-  else if (cmd == "print page" || cmd == "print") {
-    if (WebView *view = currentWebView()) {
-      // Qt 6 WebEngine doesn't have PrintToPdf action
-      QMessageBox::information(this, "Command Palette", "Print functionality not implemented yet");
-    }
-  } else if (cmd == "save page" || cmd == "save") {
-    if (WebView *view = currentWebView()) {
-      view->triggerPageAction(QWebEnginePage::SavePage);
-    }
-  } else if (cmd == "find in page" || cmd == "find") {
-    // This would need a find bar implementation
-    QMessageBox::information(this, "Command Palette", "Find in page not implemented yet");
-  }
-
-  // Window commands
-  else if (cmd == "toggle fullscreen" || cmd == "fullscreen") {
-    if (isFullScreen()) {
-      showNormal();
-    } else {
-      showFullScreen();
-    }
-  } else if (cmd == "show sidebar" || cmd == "sidebar") {
-    if (tabWidget) {
-      tabWidget->showSidebar();
-    }
-  } else if (cmd == "hide sidebar") {
-    if (tabWidget) {
-      tabWidget->hideSidebar();
-    }
-  }
-
-  // Settings
-  else if (cmd == "settings" || cmd == "preferences") {
-    showSettings();
-  }
-
-  // Unknown command
-  else {
-    QMessageBox::information(this, "Command Palette",
-                             QString("Unknown command: %1").arg(command));
-  }
-}
-
 void MainWindow::resizeEvent(QResizeEvent *event) {
   QMainWindow::resizeEvent(event);
   adjustStatusWidgetsGeometry();
@@ -946,35 +822,58 @@ void MainWindow::resizeEvent(QResizeEvent *event) {
 
 void MainWindow::adjustStatusWidgetsGeometry() {
   if (!progressBar)
-    return; // statusLabelのチェックを削除
+    return;
 
   int barWidth = 150;
-  int barHeight = 5; // より細くする
-  // int labelWidth = 150; // 削除
-  // int labelHeight = 20; // 削除
-  // int spacing = 5; // 削除
+  int barHeight = 5;
 
-  // int totalWidth = labelWidth + spacing + barWidth; // 修正
-  // if (!progressBar->isVisible()) { // 修正
-  //   totalWidth = labelWidth; // 修正
-  // }
-  // if (!statusLabel->isVisible()){ // 削除
-  //     totalWidth = barWidth; // 削除
-  // }
-  if (!progressBar->isVisible()) { // statusLabelのチェックを削除
+  if (!progressBar->isVisible()) {
     return;
   }
 
-  // int xPos = (width() - totalWidth) / 2; // 修正
-  int xPos = (width() - barWidth) / 2; // progressBarのみなので修正
-  int yPos = 10;                       // Small margin from the top
+  int xPos = (width() - barWidth) / 2;
+  int yPos = 10;
 
-  // if (statusLabel->isVisible() && progressBar->isVisible()){ // 削除
-  //   statusLabel->setGeometry(xPos, yPos, labelWidth, labelHeight); // 削除
-  //   progressBar->setGeometry(xPos + labelWidth + spacing, yPos + (labelHeight - barHeight)/2, barWidth, barHeight); // 削除
-  // } else if (statusLabel->isVisible()){ // 削除
-  //   statusLabel->setGeometry((width() - labelWidth) / 2, yPos, labelWidth, labelHeight); // 削除
-  // } else if (progressBar->isVisible()){ // 修正
-  progressBar->setGeometry(xPos, yPos, barWidth, barHeight); // progressBarのみなので修正
-  // }
+  progressBar->setGeometry(xPos, yPos, barWidth, barHeight);
+}
+
+#ifdef DEBUG_MODE
+void MainWindow::openTestPage(const QString &fileName) {
+  // Get the application directory
+  QString appDir = QCoreApplication::applicationDirPath();
+  QDir projectDir(appDir);
+
+  // Find the project root directory (where tests folder exists)
+  while (!projectDir.exists("tests") && projectDir.cdUp()) {
+    // Move to parent directory
+  }
+
+  QString testsPath = projectDir.absoluteFilePath("tests/" + fileName);
+  QUrl fileUrl = QUrl::fromLocalFile(testsPath);
+
+  if (QFile::exists(testsPath)) {
+    newTab();
+    if (WebView *view = currentWebView()) {
+      view->load(fileUrl);
+    }
+  } else {
+    QMessageBox::warning(this, "Test Page Not Found",
+                         QString("Could not find test file: %1").arg(testsPath));
+  }
+}
+#endif
+
+// WebChannel invokable methods for JavaScript swipe gesture handling
+void MainWindow::handleSwipeBack() {
+#ifdef DEBUG_MODE
+  qDebug() << "MainWindow::handleSwipeBack called from JavaScript";
+#endif
+  goBack();
+}
+
+void MainWindow::handleSwipeForward() {
+#ifdef DEBUG_MODE
+  qDebug() << "MainWindow::handleSwipeForward called from JavaScript";
+#endif
+  goForward();
 }
