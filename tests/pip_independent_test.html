@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>独立Picture-in-Picture機能テスト</title>
+    <style>
+      body {
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 20px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        min-height: 100vh;
+      }
+
+      .container {
+        background: rgba(255, 255, 255, 0.1);
+        backdrop-filter: blur(10px);
+        border-radius: 20px;
+        padding: 30px;
+        box-shadow: 0 8px 32px rgba(31, 38, 135, 0.37);
+      }
+
+      h1 {
+        text-align: center;
+        color: #fff;
+        margin-bottom: 30px;
+        text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+      }
+
+      .test-section {
+        background: rgba(255, 255, 255, 0.05);
+        border-radius: 15px;
+        padding: 20px;
+        margin-bottom: 20px;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+      }
+
+      .test-section h2 {
+        color: #ffd700;
+        margin-bottom: 15px;
+      }
+
+      .element-samples {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 20px;
+        margin: 20px 0;
+      }
+
+      .sample-element {
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 10px;
+        padding: 20px;
+        border: 2px solid rgba(255, 255, 255, 0.2);
+        transition: all 0.3s ease;
+      }
+
+      .sample-element:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+        border-color: #ffd700;
+      }
+
+      .sample-image {
+        width: 100%;
+        height: 200px;
+        background: linear-gradient(45deg, #ff6b6b, #4ecdc4);
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 24px;
+        font-weight: bold;
+        color: white;
+        text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+        margin-bottom: 10px;
+      }
+
+      .sample-chart {
+        width: 100%;
+        height: 150px;
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 8px;
+        position: relative;
+        overflow: hidden;
+        margin-bottom: 10px;
+      }
+
+      .chart-bar {
+        position: absolute;
+        bottom: 0;
+        background: linear-gradient(to top, #667eea, #764ba2);
+        border-radius: 3px 3px 0 0;
+        transition: height 0.3s ease;
+      }
+
+      .chart-bar:nth-child(1) {
+        left: 10%;
+        width: 15%;
+        height: 60%;
+      }
+      .chart-bar:nth-child(2) {
+        left: 30%;
+        width: 15%;
+        height: 80%;
+      }
+      .chart-bar:nth-child(3) {
+        left: 50%;
+        width: 15%;
+        height: 45%;
+      }
+      .chart-bar:nth-child(4) {
+        left: 70%;
+        width: 15%;
+        height: 90%;
+      }
+
+      .instructions {
+        background: rgba(255, 193, 7, 0.2);
+        border-left: 4px solid #ffc107;
+        padding: 15px;
+        border-radius: 5px;
+        margin-bottom: 20px;
+      }
+
+      .shortcut-info {
+        background: rgba(40, 167, 69, 0.2);
+        border-left: 4px solid #28a745;
+        padding: 15px;
+        border-radius: 5px;
+        margin-bottom: 20px;
+      }
+
+      .shortcut-info code {
+        background: rgba(0, 0, 0, 0.2);
+        padding: 2px 6px;
+        border-radius: 3px;
+        font-weight: bold;
+      }
+
+      .video-sample {
+        width: 100%;
+        max-width: 400px;
+        border-radius: 10px;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+      }
+
+      .text-content {
+        line-height: 1.6;
+        margin-bottom: 15px;
+      }
+
+      .highlight-box {
+        background: linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%);
+        color: #333;
+        padding: 20px;
+        border-radius: 10px;
+        margin: 15px 0;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+      }
+
+      .interactive-widget {
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 10px;
+        padding: 20px;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+      }
+
+      .widget-controls {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 15px;
+      }
+
+      .widget-button {
+        background: linear-gradient(45deg, #667eea, #764ba2);
+        color: white;
+        border: none;
+        padding: 10px 20px;
+        border-radius: 25px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+      }
+
+      .widget-button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+      }
+
+      .progress-bar {
+        width: 100%;
+        height: 20px;
+        background: rgba(255, 255, 255, 0.2);
+        border-radius: 10px;
+        overflow: hidden;
+      }
+
+      .progress-fill {
+        height: 100%;
+        background: linear-gradient(90deg, #ffd700, #ffed4e);
+        width: 0%;
+        transition: width 0.3s ease;
+        border-radius: 10px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>🎬 独立Picture-in-Picture機能テスト</h1>
+
+      <div class="instructions">
+        <h3>📋 テスト手順</h3>
+        <p>
+          この機能では、ビデオ以外の任意の要素もPicture-in-Pictureで表示できます：
+        </p>
+        <ol>
+          <li><strong>要素PiP:</strong> 任意の要素を選択してPiP表示</li>
+          <li><strong>ページPiP:</strong> ページ全体をミニウィンドウで表示</li>
+          <li>
+            <strong>スクリーンショットPiP:</strong>
+            ページのスナップショットを作成
+          </li>
+        </ol>
+      </div>
+
+      <div class="shortcut-info">
+        <h3>⌨️ キーボードショートカット</h3>
+        <p>
+          <code>Ctrl+Alt+E</code> - 要素選択PiP<br />
+          <code>Ctrl+Alt+P</code> - ページ全体PiP<br />
+          <code>Ctrl+Alt+S</code> - スクリーンショットPiP<br />
+          <code>Ctrl+Alt+X</code> - 全PiP終了
+        </p>
+        <p>
+          メニューからも実行可能:
+          <strong>View → Independent Picture-in-Picture</strong>
+        </p>
+      </div>
+
+      <div class="test-section">
+        <h2>🖼️ 画像要素のテスト</h2>
+        <div class="element-samples">
+          <div class="sample-element">
+            <div class="sample-image">🌅 Sample Image 1</div>
+            <p>この画像要素をPiPで表示してみてください</p>
+          </div>
+          <div class="sample-element">
+            <div class="sample-image">🏔️ Sample Image 2</div>
+            <p>複数の要素を同時にPiP表示可能です</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="test-section">
+        <h2>📊 チャート要素のテスト</h2>
+        <div class="sample-element">
+          <div class="sample-chart">
+            <div class="chart-bar"></div>
+            <div class="chart-bar"></div>
+            <div class="chart-bar"></div>
+            <div class="chart-bar"></div>
+          </div>
+          <p>このチャート要素をPiPで表示してデータを監視</p>
+        </div>
+      </div>
+
+      <div class="test-section">
+        <h2>🎮 インタラクティブ要素のテスト</h2>
+        <div class="interactive-widget">
+          <h3>コントロールパネル</h3>
+          <div class="widget-controls">
+            <button class="widget-button" onclick="updateProgress(25)">
+              25%
+            </button>
+            <button class="widget-button" onclick="updateProgress(50)">
+              50%
+            </button>
+            <button class="widget-button" onclick="updateProgress(75)">
+              75%
+            </button>
+            <button class="widget-button" onclick="updateProgress(100)">
+              100%
+            </button>
+          </div>
+          <div class="progress-bar">
+            <div class="progress-fill" id="progressFill"></div>
+          </div>
+          <p>プログレスバー: <span id="progressText">0%</span></p>
+        </div>
+      </div>
+
+      <div class="test-section">
+        <h2>📝 テキストコンテンツのテスト</h2>
+        <div class="text-content">
+          <p>
+            このテキストブロックもPiPで表示できます。長いドキュメントの一部を常に表示しておきたい場合に便利です。
+          </p>
+          <div class="highlight-box">
+            <h4>重要な情報</h4>
+            <p>
+              この重要な情報ボックスをPiPで表示して、他の作業をしながら参照できます。
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div class="test-section">
+        <h2>🎥 ビデオ要素のテスト</h2>
+        <video class="video-sample" controls>
+          <source
+            src="https://www.w3schools.com/html/mov_bbb.mp4"
+            type="video/mp4"
+          />
+          <p>お使いのブラウザはこのビデオをサポートしていません。</p>
+        </video>
+        <p>従来のビデオPiPと新しい独立PiP機能の両方をテスト可能</p>
+      </div>
+
+      <div class="test-section">
+        <h2>🔬 テスト結果の確認項目</h2>
+        <ul>
+          <li>✅ 要素選択時のビジュアルフィードバック（ハイライト）</li>
+          <li>✅ PiPウィンドウのドラッグ＆ドロップ</li>
+          <li>✅ PiPウィンドウのリサイズ機能</li>
+          <li>✅ 複数PiPウィンドウの同時表示</li>
+          <li>✅ 元要素との同期（インタラクティブ要素の場合）</li>
+          <li>✅ PiPウィンドウの閉じるボタン</li>
+          <li>✅ 全PiP終了機能</li>
+          <li>✅ キーボードショートカットの動作</li>
+          <li>✅ メニューからの実行</li>
+        </ul>
+      </div>
+    </div>
+
+    <script>
+      function updateProgress(value) {
+        const fill = document.getElementById("progressFill");
+        const text = document.getElementById("progressText");
+        fill.style.width = value + "%";
+        text.textContent = value + "%";
+      }
+
+      // アニメーション効果を追加
+      document.addEventListener("DOMContentLoaded", function () {
+        const elements = document.querySelectorAll(".sample-element");
+        elements.forEach((element, index) => {
+          element.style.opacity = "0";
+          element.style.transform = "translateY(20px)";
+
+          setTimeout(() => {
+            element.style.transition = "all 0.5s ease";
+            element.style.opacity = "1";
+            element.style.transform = "translateY(0)";
+          }, index * 100);
+        });
+      });
+
+      // チャートアニメーション
+      function animateChart() {
+        const bars = document.querySelectorAll(".chart-bar");
+        bars.forEach((bar) => {
+          const height = Math.random() * 80 + 20;
+          bar.style.height = height + "%";
+        });
+      }
+
+      // 5秒ごとにチャートをアニメーション
+      setInterval(animateChart, 5000);
+      animateChart(); // 初期実行
+    </script>
+  </body>
+</html>

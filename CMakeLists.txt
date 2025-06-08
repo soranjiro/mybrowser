@@ -1,6 +1,13 @@
 cmake_minimum_required(VERSION 3.16)
 project(MyBrowser LANGUAGES CXX)
 
+# Add Objective-C++ support for macOS
+if(APPLE)
+    enable_language(OBJCXX)
+    set(CMAKE_OBJCXX_STANDARD 17)
+    set(CMAKE_OBJCXX_STANDARD_REQUIRED ON)
+endif()
+
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
@@ -60,6 +67,8 @@ add_executable(MyBrowser
     # Picture-in-Picture
     src/features/picture-in-picture/pictureinpicturemanager.cpp
     src/features/picture-in-picture/pictureinpicturemanager.h
+    src/features/picture-in-picture/pipwindow.cpp
+    src/features/picture-in-picture/pipwindow.h
 
     # Core
     src/core/ui_constants.h
@@ -84,4 +93,36 @@ target_link_libraries(MyBrowser PRIVATE
     Qt6::Widgets
     Qt6::WebEngineCore
     Qt6::WebEngineWidgets
+)
+
+# Standalone PiP executable
+add_executable(PiPStandalone
+    src/features/picture-in-picture/pip_main.cpp
+    src/features/picture-in-picture/pip_standalone.cpp
+    src/features/picture-in-picture/pip_standalone.h
+)
+
+# Add macOS-specific Objective-C++ files for Standalone PiP
+if(APPLE)
+    target_sources(PiPStandalone PRIVATE
+        src/features/picture-in-picture/pip_standalone_macos.mm
+        src/features/picture-in-picture/pip_standalone_macos.h
+    )
+endif()
+
+target_link_libraries(PiPStandalone PRIVATE
+    Qt6::Widgets
+    Qt6::Network
+)
+
+# Add macOS-specific settings for standalone PiP
+if(APPLE)
+    target_link_libraries(PiPStandalone PRIVATE
+        "-framework Cocoa"
+        "-framework Foundation"
+    )
+endif()
+
+target_include_directories(PiPStandalone PRIVATE
+    src/features/picture-in-picture
 )

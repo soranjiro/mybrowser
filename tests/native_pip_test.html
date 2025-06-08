@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ネイティブPiP機能テスト</title>
+    <style>
+      body {
+        font-family: "Arial", sans-serif;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        margin: 0;
+        padding: 20px;
+        color: white;
+      }
+
+      .container {
+        max-width: 800px;
+        margin: 0 auto;
+        background: rgba(255, 255, 255, 0.1);
+        padding: 30px;
+        border-radius: 20px;
+        backdrop-filter: blur(10px);
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+      }
+
+      h1 {
+        text-align: center;
+        margin-bottom: 30px;
+        font-size: 2.5em;
+        text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+      }
+
+      .section {
+        margin: 30px 0;
+        padding: 20px;
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 15px;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+      }
+
+      .section h2 {
+        color: #ffd700;
+        margin-bottom: 15px;
+        font-size: 1.5em;
+      }
+
+      .test-image {
+        width: 300px;
+        height: 200px;
+        border-radius: 10px;
+        margin: 10px;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+        cursor: pointer;
+        transition: transform 0.3s ease;
+      }
+
+      .test-image:hover {
+        transform: scale(1.05);
+      }
+
+      .test-video {
+        width: 400px;
+        height: 225px;
+        border-radius: 10px;
+        margin: 10px;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+      }
+
+      .instructions {
+        background: rgba(255, 215, 0, 0.2);
+        padding: 15px;
+        border-radius: 10px;
+        border-left: 4px solid #ffd700;
+        margin: 20px 0;
+      }
+
+      .key-combo {
+        background: rgba(0, 0, 0, 0.3);
+        padding: 5px 10px;
+        border-radius: 5px;
+        font-family: monospace;
+        font-weight: bold;
+        color: #ffd700;
+      }
+
+      .element-test {
+        background: linear-gradient(45deg, #ff6b6b, #4ecdc4);
+        padding: 20px;
+        border-radius: 15px;
+        text-align: center;
+        margin: 10px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        font-size: 1.2em;
+        font-weight: bold;
+      }
+
+      .element-test:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+      }
+
+      .image-gallery {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 15px;
+        margin: 20px 0;
+      }
+
+      .sample-content {
+        background: rgba(255, 255, 255, 0.15);
+        padding: 15px;
+        border-radius: 10px;
+        margin: 10px 0;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>🎬 ネイティブPicture-in-Picture機能テスト</h1>
+
+      <div class="instructions">
+        <h3>📋 使用方法</h3>
+        <p>
+          以下のキーボードショートカットを使用してネイティブPiP機能をテストできます：
+        </p>
+        <ul>
+          <li>
+            <span class="key-combo">Ctrl+Alt+I</span> -
+            画像をネイティブPiPで開く
+          </li>
+          <li>
+            <span class="key-combo">Ctrl+Alt+V</span> -
+            動画をネイティブPiPで開く
+          </li>
+          <li>
+            <span class="key-combo">Ctrl+Alt+E</span> -
+            要素をネイティブPiPで開く
+          </li>
+          <li>
+            <span class="key-combo">Ctrl+Alt+S</span> -
+            スタンドアロン画像PiP（別プロセス、macOS Spaces対応）
+          </li>
+          <li>
+            <span class="key-combo">Ctrl+Alt+X</span> -
+            全てのネイティブPiPウィンドウを閉じる
+          </li>
+        </ul>
+        <p>
+          または、メニューバーの「View」→「Native
+          Picture-in-Picture」からも利用できます。
+        </p>
+      </div>
+
+      <div class="section">
+        <h2>🖼️ 画像テスト</h2>
+        <p>
+          以下の画像をクリックして選択し、<span class="key-combo"
+            >Ctrl+Alt+I</span
+          >でネイティブPiPウィンドウで開くことができます。
+        </p>
+        <div class="image-gallery">
+          <img
+            src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='200'%3E%3Crect width='300' height='200' fill='%23ff6b6b'/%3E%3Ctext x='150' y='100' text-anchor='middle' dy='0.35em' font-family='Arial' font-size='20' fill='white'%3E美しい夕日%3C/text%3E%3C/svg%3E"
+            alt="美しい夕日"
+            class="test-image"
+            onclick="selectImage(this)"
+          />
+          <img
+            src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='200'%3E%3Crect width='300' height='200' fill='%234ecdc4'/%3E%3Ctext x='150' y='100' text-anchor='middle' dy='0.35em' font-family='Arial' font-size='20' fill='white'%3E美しい海%3C/text%3E%3C/svg%3E"
+            alt="美しい海"
+            class="test-image"
+            onclick="selectImage(this)"
+          />
+          <img
+            src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='200'%3E%3Crect width='300' height='200' fill='%2345b7d1'/%3E%3Ctext x='150' y='100' text-anchor='middle' dy='0.35em' font-family='Arial' font-size='20' fill='white'%3E美しい空%3C/text%3E%3C/svg%3E"
+            alt="美しい空"
+            class="test-image"
+            onclick="selectImage(this)"
+          />
+        </div>
+      </div>
+
+      <div class="section">
+        <h2>🎥 動画テスト</h2>
+        <p>
+          動画要素を選択し、<span class="key-combo">Ctrl+Alt+V</span
+          >でネイティブPiPウィンドウで開くことができます。
+        </p>
+        <video
+          class="test-video"
+          controls
+          onclick="selectVideo(this)"
+          width="400"
+          height="225"
+        >
+          <!-- HTML5 Canvas生成ビデオ（JavaScript生成） -->
+          <source id="canvasVideoSource" type="video/mp4" />
+          <p>このブラウザは動画をサポートしていません。</p>
+        </video>
+        <div class="sample-content">
+          <h4>🎬 テスト用動画ジェネレータ</h4>
+          <button
+            onclick="generateTestVideo()"
+            style="
+              padding: 10px 20px;
+              background: #4ecdc4;
+              color: white;
+              border: none;
+              border-radius: 5px;
+              cursor: pointer;
+              font-size: 14px;
+            "
+          >
+            テスト動画を生成
+          </button>
+          <p id="videoStatus">
+            ボタンをクリックしてテスト用動画を生成してください
+          </p>
+        </div>
+      </div>
+
+      <div class="section">
+        <h2>🎯 要素テスト</h2>
+        <p>
+          以下の要素をクリックして選択し、<span class="key-combo"
+            >Ctrl+Alt+E</span
+          >でネイティブPiPウィンドウで開くことができます。
+        </p>
+        <div class="element-test" onclick="selectElement(this)">
+          <h3>🌟 特別なコンテンツ</h3>
+          <p>このボックス全体をPicture-in-Pictureウィンドウで表示できます！</p>
+          <p>グラデーション背景とアニメーション効果付き</p>
+        </div>
+
+        <div class="sample-content" onclick="selectElement(this)">
+          <h4>📊 サンプルダッシュボード</h4>
+          <p>進行状況: ██████████ 100%</p>
+          <p>ステータス: ✅ 正常</p>
+          <p>最終更新: 2025年6月8日</p>
+        </div>
+      </div>
+
+      <div class="section">
+        <h2>⚙️ テスト手順</h2>
+        <ol>
+          <li>上記の画像、動画、または要素をクリックして選択します</li>
+          <li>
+            対応するキーボードショートカットを押します：
+            <ul>
+              <li>画像: <span class="key-combo">Ctrl+Alt+I</span></li>
+              <li>動画: <span class="key-combo">Ctrl+Alt+V</span></li>
+              <li>要素: <span class="key-combo">Ctrl+Alt+E</span></li>
+            </ul>
+          </li>
+          <li>新しいネイティブPiPウィンドウが開くことを確認します</li>
+          <li>PiPウィンドウをドラッグ移動できることを確認します</li>
+          <li>最小化・閉じるボタンが機能することを確認します</li>
+          <li>
+            <span class="key-combo">Ctrl+Alt+X</span
+            >で全てのPiPウィンドウが閉じることを確認します
+          </li>
+        </ol>
+      </div>
+
+      <div class="section">
+        <h2>🚀 スタンドアロンPiPテスト（macOS Spaces対応）</h2>
+        <p>
+          別プロセスで動作するPiPウィンドウをテストします。macOSのSpaces間でも表示され続けます。
+          <span class="key-combo">Ctrl+Alt+S</span
+          >を押してから画像を選択してください。
+        </p>
+        <div class="image-gallery">
+          <img
+            src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='200'%3E%3Crect width='300' height='200' fill='%23e74c3c'/%3E%3Ctext x='150' y='100' text-anchor='middle' dy='0.35em' font-family='Arial' font-size='16' fill='white'%3EスタンドアロンPiP%3C/text%3E%3Ctext x='150' y='130' text-anchor='middle' dy='0.35em' font-family='Arial' font-size='12' fill='white'%3E別プロセス実行%3C/text%3E%3C/svg%3E"
+            alt="スタンドアロンPiPテスト画像"
+            class="test-image"
+            onclick="selectImage(this)"
+          />
+          <img
+            src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='200'%3E%3Crect width='300' height='200' fill='%23f39c12'/%3E%3Ctext x='150' y='100' text-anchor='middle' dy='0.35em' font-family='Arial' font-size='16' fill='white'%3EmacOS Spaces%3C/text%3E%3Ctext x='150' y='130' text-anchor='middle' dy='0.35em' font-family='Arial' font-size='12' fill='white'%3E対応テスト%3C/text%3E%3C/svg%3E"
+            alt="macOS Spacesテスト画像"
+            class="test-image"
+            onclick="selectImage(this)"
+          />
+        </div>
+        <p style="color: #ffd700; font-weight: bold">
+          ✨ 特徴:
+          メインブラウザとは独立したプロセスで動作し、macOSのSpaces（仮想デスクトップ）間でもウィンドウが表示され続けます。
+        </p>
+      </div>
+
+      <div class="section">
+        <h2>⚙️ テスト手順</h2>
+        <ol>
+          <li>上記の画像、動画、または要素をクリックして選択します</li>
+          <li>
+            対応するキーボードショートカットを押します：
+            <ul>
+              <li>画像: <span class="key-combo">Ctrl+Alt+I</span></li>
+              <li>動画: <span class="key-combo">Ctrl+Alt+V</span></li>
+              <li>要素: <span class="key-combo">Ctrl+Alt+E</span></li>
+            </ul>
+          </li>
+          <li>新しいネイティブPiPウィンドウが開くことを確認します</li>
+          <li>PiPウィンドウをドラッグ移動できることを確認します</li>
+          <li>最小化・閉じるボタンが機能することを確認します</li>
+          <li>
+            <span class="key-combo">Ctrl+Alt+X</span
+            >で全てのPiPウィンドウが閉じることを確認します
+          </li>
+        </ol>
+      </div>
+    </div>
+
+    <script>
+      let selectedElement = null;
+
+      function selectImage(img) {
+        clearSelection();
+        img.style.border = "3px solid #FFD700";
+        img.style.boxShadow = "0 0 20px rgba(255, 215, 0, 0.7)";
+        selectedElement = img;
+        console.log("画像が選択されました:", img.alt);
+      }
+
+      function selectVideo(video) {
+        clearSelection();
+        video.style.border = "3px solid #FFD700";
+        video.style.boxShadow = "0 0 20px rgba(255, 215, 0, 0.7)";
+        selectedElement = video;
+        console.log("動画が選択されました");
+      }
+
+      function selectElement(element) {
+        clearSelection();
+        element.style.border = "3px solid #FFD700";
+        element.style.boxShadow = "0 0 20px rgba(255, 215, 0, 0.7)";
+        selectedElement = element;
+        console.log(
+          "要素が選択されました:",
+          element.textContent.substring(0, 30) + "..."
+        );
+      }
+
+      function clearSelection() {
+        if (selectedElement) {
+          selectedElement.style.border = "";
+          selectedElement.style.boxShadow = "";
+        }
+        selectedElement = null;
+      }
+
+      // キーボードショートカットのログ出力
+      document.addEventListener("keydown", function (event) {
+        if (event.ctrlKey && event.altKey) {
+          switch (event.key) {
+            case "I":
+              console.log(
+                "ネイティブ画像PiPショートカットが押されました (Ctrl+Alt+I)"
+              );
+              break;
+            case "V":
+              console.log(
+                "ネイティブ動画PiPショートカットが押されました (Ctrl+Alt+V)"
+              );
+              break;
+            case "E":
+              console.log(
+                "ネイティブ要素PiPショートカットが押されました (Ctrl+Alt+E)"
+              );
+              break;
+            case "X":
+              console.log(
+                "全ネイティブPiP閉じるショートカットが押されました (Ctrl+Alt+X)"
+              );
+              break;
+          }
+        }
+      });
+
+      console.log("🎬 ネイティブPiPテストページが読み込まれました");
+      console.log("使用可能なショートカット:");
+      console.log("  Ctrl+Alt+I - ネイティブ画像PiP");
+      console.log("  Ctrl+Alt+V - ネイティブ動画PiP");
+      console.log("  Ctrl+Alt+E - ネイティブ要素PiP");
+      console.log("  Ctrl+Alt+X - 全ネイティブPiP閉じる");
+
+      // テスト用動画生成機能
+      function generateTestVideo() {
+        const canvas = document.createElement("canvas");
+        canvas.width = 400;
+        canvas.height = 225;
+        const ctx = canvas.getContext("2d");
+
+        // 動画ストリームを作成
+        const stream = canvas.captureStream(30); // 30fps
+
+        // アニメーション描画
+        let frame = 0;
+        function drawFrame() {
+          // グラデーション背景
+          const gradient = ctx.createLinearGradient(
+            0,
+            0,
+            canvas.width,
+            canvas.height
+          );
+          gradient.addColorStop(0, `hsl(${(frame * 2) % 360}, 70%, 50%)`);
+          gradient.addColorStop(1, `hsl(${(frame * 2 + 120) % 360}, 70%, 30%)`);
+
+          ctx.fillStyle = gradient;
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+          // 回転する円
+          ctx.save();
+          ctx.translate(canvas.width / 2, canvas.height / 2);
+          ctx.rotate((frame * 0.02) % (2 * Math.PI));
+
+          ctx.fillStyle = "rgba(255, 255, 255, 0.8)";
+          ctx.beginPath();
+          ctx.arc(0, -50, 30, 0, 2 * Math.PI);
+          ctx.fill();
+
+          ctx.restore();
+
+          // テキスト
+          ctx.fillStyle = "white";
+          ctx.font = "bold 24px Arial";
+          ctx.textAlign = "center";
+          ctx.fillText("テスト動画", canvas.width / 2, canvas.height / 2 + 50);
+
+          ctx.font = "16px Arial";
+          ctx.fillText(
+            `フレーム: ${frame}`,
+            canvas.width / 2,
+            canvas.height / 2 + 80
+          );
+
+          frame++;
+          if (frame < 300) {
+            // 10秒間のアニメーション（30fps）
+            requestAnimationFrame(drawFrame);
+          }
+        }
+
+        drawFrame();
+
+        // MediaRecorderで動画を録画
+        const mediaRecorder = new MediaRecorder(stream, {
+          mimeType: "video/webm;codecs=vp8",
+        });
+
+        const chunks = [];
+        mediaRecorder.ondataavailable = function (event) {
+          if (event.data.size > 0) {
+            chunks.push(event.data);
+          }
+        };
+
+        mediaRecorder.onstop = function () {
+          const blob = new Blob(chunks, { type: "video/webm" });
+          const videoUrl = URL.createObjectURL(blob);
+
+          const video = document.querySelector(".test-video");
+          video.src = videoUrl;
+          video.load();
+
+          document.getElementById("videoStatus").textContent =
+            "✅ テスト動画が生成されました！Ctrl+Alt+Vでテストできます。";
+          console.log("テスト動画が生成されました");
+        };
+
+        mediaRecorder.start();
+        document.getElementById("videoStatus").textContent =
+          "🎬 動画を生成中...";
+
+        // 10秒後に録画停止
+        setTimeout(() => {
+          mediaRecorder.stop();
+          stream.getTracks().forEach((track) => track.stop());
+        }, 10000);
+      }
+    </script>
+  </body>
+</html>

@@ -87,8 +87,29 @@ void CommandPaletteManager::showCommandPalette() {
 #ifdef QT_DEBUG
 void CommandPaletteManager::openTestPage() {
   // testsフォルダ内のHTMLファイルのリストを作成
-  QStringList testFiles = {"debug_test.html", "pip_test.html",
-                           "pip_integration_test.html", "test_page.html", "video_test.html"};
+  // testsフォルダのパスを構築
+  QString appDir = QCoreApplication::applicationDirPath();
+  QDir projectDir(appDir);
+
+  // プロジェクトのルートディレクトリを見つける
+  while (!projectDir.exists("tests") && projectDir.cdUp()) {
+    // 親ディレクトリに移動
+  }
+
+  QDir testsDir(projectDir.absoluteFilePath("tests"));
+  QStringList testFiles;
+
+  if (testsDir.exists()) {
+    // HTMLファイルのみを取得
+    QStringList filters;
+    filters << "*.html" << "*.htm";
+    testFiles = testsDir.entryList(filters, QDir::Files, QDir::Name);
+  }
+
+  if (testFiles.isEmpty()) {
+    QMessageBox::warning(mainWindow, "No Test Files", "No HTML test files found in the tests directory.");
+    return;
+  }
 
   bool ok;
   QString selectedFile = QInputDialog::getItem(mainWindow, "Select Test Page",

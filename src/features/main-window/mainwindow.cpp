@@ -198,6 +198,65 @@ void MainWindow::createActions() {
 
   openLinkInNewTabAction = new QAction("Open Link in New Tab", this);
 
+  // Create independent Picture-in-Picture actions
+  elementPiPAction = new QAction("Element Picture-in-Picture", this);
+  elementPiPAction->setShortcut(QKeySequence("Ctrl+Alt+E"));
+  elementPiPAction->setStatusTip("Select any element to display in Picture-in-Picture mode");
+  elementPiPAction->setToolTip("Select Element for PiP (Ctrl+Alt+E)");
+
+  pagePiPAction = new QAction("Page Picture-in-Picture", this);
+  pagePiPAction->setShortcut(QKeySequence("Ctrl+Alt+P"));
+  pagePiPAction->setStatusTip("Display entire page in Picture-in-Picture mode");
+  pagePiPAction->setToolTip("Page PiP (Ctrl+Alt+P)");
+
+  screenshotPiPAction = new QAction("Screenshot Picture-in-Picture", this);
+  screenshotPiPAction->setShortcut(QKeySequence("Ctrl+Shift+S"));
+  screenshotPiPAction->setStatusTip("Create a screenshot-style Picture-in-Picture window");
+  screenshotPiPAction->setToolTip("Screenshot PiP (Ctrl+Shift+S)");
+
+  // Create standalone Picture-in-Picture action (separate process for macOS Spaces)
+  standaloneImagePiPAction = new QAction("Standalone Image PiP", this);
+  standaloneImagePiPAction->setShortcut(QKeySequence("Ctrl+Alt+S"));
+  standaloneImagePiPAction->setStatusTip("Open image in standalone Picture-in-Picture window (separate process)");
+  standaloneImagePiPAction->setToolTip("Standalone Image PiP (Ctrl+Alt+S) - macOS Spaces compatible");
+
+  exitAllPiPAction = new QAction("Exit All Picture-in-Picture", this);
+  exitAllPiPAction->setShortcut(QKeySequence("Ctrl+Alt+X"));
+  exitAllPiPAction->setStatusTip("Close all Picture-in-Picture windows");
+  exitAllPiPAction->setToolTip("Exit All PiP (Ctrl+Alt+X)");
+
+  // Create native Picture-in-Picture actions
+  nativeImagePiPAction = new QAction("Native Image PiP", this);
+  nativeImagePiPAction->setShortcut(QKeySequence("Ctrl+Alt+I"));
+  nativeImagePiPAction->setStatusTip("Open selected image in native Picture-in-Picture window");
+  nativeImagePiPAction->setToolTip("Native Image PiP (Ctrl+Alt+I)");
+
+  nativeVideoPiPAction = new QAction("Native Video PiP", this);
+  nativeVideoPiPAction->setShortcut(QKeySequence("Ctrl+Alt+V"));
+  nativeVideoPiPAction->setStatusTip("Open selected video in native Picture-in-Picture window");
+  nativeVideoPiPAction->setToolTip("Native Video PiP (Ctrl+Alt+V)");
+
+  nativeElementPiPAction = new QAction("Native Element PiP", this);
+  nativeElementPiPAction->setShortcut(QKeySequence("Ctrl+Alt+E"));
+  nativeElementPiPAction->setStatusTip("Open selected element in native Picture-in-Picture window");
+  nativeElementPiPAction->setToolTip("Native Element PiP (Ctrl+Alt+E)");
+
+  closeAllNativePiPAction = new QAction("Close All Native PiP", this);
+  closeAllNativePiPAction->setShortcut(QKeySequence("Ctrl+Alt+X"));
+  closeAllNativePiPAction->setStatusTip("Close all native Picture-in-Picture windows");
+  closeAllNativePiPAction->setToolTip("Close All Native PiP (Ctrl+Alt+X)");
+
+  // Add all PiP actions to MainWindow for global shortcuts
+  this->addAction(elementPiPAction);
+  this->addAction(pagePiPAction);
+  this->addAction(screenshotPiPAction);
+  this->addAction(standaloneImagePiPAction);
+  this->addAction(exitAllPiPAction);
+  this->addAction(nativeImagePiPAction);
+  this->addAction(nativeVideoPiPAction);
+  this->addAction(nativeElementPiPAction);
+  this->addAction(closeAllNativePiPAction);
+
   // Setup manager actions
   if (pictureInPictureManager) {
     pictureInPictureManager->setupActions();
@@ -333,6 +392,25 @@ void MainWindow::createMenus() {
     pictureInPictureManager->addToMenu(viewMenu);
   }
 
+  // Add independent Picture-in-Picture actions
+  viewMenu->addSeparator();
+  QMenu *pipMenu = viewMenu->addMenu("Independent Picture-in-Picture");
+  pipMenu->addAction(elementPiPAction);
+  pipMenu->addAction(pagePiPAction);
+  pipMenu->addAction(screenshotPiPAction);
+  pipMenu->addSeparator();
+  pipMenu->addAction(standaloneImagePiPAction);
+  pipMenu->addSeparator();
+  pipMenu->addAction(exitAllPiPAction);
+
+  // Add native Picture-in-Picture submenu
+  QMenu *nativePipMenu = viewMenu->addMenu("Native Picture-in-Picture");
+  nativePipMenu->addAction(nativeImagePiPAction);
+  nativePipMenu->addAction(nativeVideoPiPAction);
+  nativePipMenu->addAction(nativeElementPiPAction);
+  nativePipMenu->addSeparator();
+  nativePipMenu->addAction(closeAllNativePiPAction);
+
   QMenu *historyMenu = menuBar()->addMenu("&History");
   historyMenu->addAction(viewHistoryAction);
   // Dynamically populate history items or show a dialog
@@ -360,35 +438,49 @@ void MainWindow::createMenus() {
   // Add debug menu for easy access to test pages
   QMenu *debugMenu = menuBar()->addMenu("&Debug");
 
-  QAction *openVideoTestAction = debugMenu->addAction("Video Test Page");
-  connect(openVideoTestAction, &QAction::triggered, this, [this]() {
-    openTestPage("video_test.html");
-  });
+  // Dynamically list and add test page actions
+  QString appDir = QCoreApplication::applicationDirPath();
+  QDir projectDir(appDir);
 
-  QAction *openPiPTestAction = debugMenu->addAction("PiP Test Page");
-  connect(openPiPTestAction, &QAction::triggered, this, [this]() {
-    openTestPage("pip_test.html");
-  });
+  // Find the project root directory (where tests folder exists)
+  while (!projectDir.exists("tests") && projectDir.cdUp()) {
+    // Move to parent directory
+  }
 
-  QAction *openPiPIntegrationTestAction = debugMenu->addAction("PiP Integration Test");
-  connect(openPiPIntegrationTestAction, &QAction::triggered, this, [this]() {
-    openTestPage("pip_integration_test.html");
-  });
+  if (projectDir.exists("tests")) {
+    QDir testsDir(projectDir.absoluteFilePath("tests"));
+    QStringList testFiles = testsDir.entryList(QStringList() << "*.html", QDir::Files | QDir::Readable);
 
-  QAction *openDebugTestAction = debugMenu->addAction("Debug Test Page");
-  connect(openDebugTestAction, &QAction::triggered, this, [this]() {
-    openTestPage("debug_test.html");
-  });
+    if (!testFiles.isEmpty()) {
+      QMenu *testPagesMenu = debugMenu->addMenu("Test Pages");
+
+      for (const QString &fileName : testFiles) {
+        QString baseName = QFileInfo(fileName).baseName();
+        QString displayName = baseName.replace('_', ' ').replace('-', ' ');
+        // Capitalize first letter of each word
+        QStringList words = displayName.split(' ');
+        for (QString &word : words) {
+          if (!word.isEmpty()) {
+            word[0] = word[0].toUpper();
+          }
+        }
+        displayName = words.join(' ');
+
+        QAction *testAction = testPagesMenu->addAction(displayName);
+        connect(testAction, &QAction::triggered, this, [this, fileName]() {
+          openTestPage(fileName);
+        });
+      }
+    } else {
+      QAction *noTestsAction = debugMenu->addAction("No Test Files Found");
+      noTestsAction->setEnabled(false);
+    }
+  } else {
+    QAction *noTestsDirAction = debugMenu->addAction("Tests Directory Not Found");
+    noTestsDirAction->setEnabled(false);
+  }
 
   debugMenu->addSeparator();
-
-  QAction *openTestsDirectoryAction = debugMenu->addAction("Open Tests Directory");
-  connect(openTestsDirectoryAction, &QAction::triggered, this, [this]() {
-    if (WebView *view = currentWebView()) {
-      QString testsPath = QDir::currentPath() + "/tests/";
-      view->load(QUrl::fromLocalFile(testsPath));
-    }
-  });
 #endif
 
   // Add keyboard shortcuts for command palette actions
@@ -458,6 +550,60 @@ void MainWindow::setupConnections() {
       view->load(url);
     }
   });
+
+  // Connect independent Picture-in-Picture actions to new native PiP functions
+  if (pictureInPictureManager) {
+    connect(elementPiPAction, &QAction::triggered, this, [this]() {
+      if (WebView *view = currentWebView()) {
+        pictureInPictureManager->createNativeElementPiP(view);
+      }
+    });
+
+    connect(pagePiPAction, &QAction::triggered, this, [this]() {
+      if (WebView *view = currentWebView()) {
+        pictureInPictureManager->createNativeElementPiP(view);
+      }
+    });
+
+    connect(screenshotPiPAction, &QAction::triggered, this, [this]() {
+      if (WebView *view = currentWebView()) {
+        pictureInPictureManager->createNativeElementPiP(view);
+      }
+    });
+
+    connect(standaloneImagePiPAction, &QAction::triggered, this, [this]() {
+      if (WebView *view = currentWebView()) {
+        pictureInPictureManager->createStandaloneImagePiP(view);
+      }
+    });
+
+    connect(exitAllPiPAction, &QAction::triggered, this, [this]() {
+      pictureInPictureManager->closeAllNativePiP();
+    });
+
+    // Connect native Picture-in-Picture actions
+    connect(nativeImagePiPAction, &QAction::triggered, this, [this]() {
+      if (WebView *view = currentWebView()) {
+        pictureInPictureManager->createNativeImagePiP(view);
+      }
+    });
+
+    connect(nativeVideoPiPAction, &QAction::triggered, this, [this]() {
+      if (WebView *view = currentWebView()) {
+        pictureInPictureManager->createNativeVideoPiP(view);
+      }
+    });
+
+    connect(nativeElementPiPAction, &QAction::triggered, this, [this]() {
+      if (WebView *view = currentWebView()) {
+        pictureInPictureManager->createNativeElementPiP(view);
+      }
+    });
+
+    connect(closeAllNativePiPAction, &QAction::triggered, this, [this]() {
+      pictureInPictureManager->closeAllNativePiP();
+    });
+  }
 }
 
 WebView *MainWindow::currentWebView() const {
