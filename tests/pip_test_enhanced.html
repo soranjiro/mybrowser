@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>PiP Testing Page - Enhanced with Image Selection</title>
+    <style>
+      body {
+          font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+          margin: 20px;
+          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          color: #333;
+          min-height: 100vh;
+      }
+      .container {
+          max-width: 1200px;
+          margin: 0 auto;
+          background: white;
+          border-radius: 15px;
+          padding: 30px;
+          box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+      }
+      h1 {
+          color: #2c3e50;
+          text-align: center;
+          margin-bottom: 30px;
+          font-size: 2.5em;
+      }
+      .instructions {
+          background: #e8f4fd;
+          border-left: 5px solid #007ACC;
+          padding: 20px;
+          margin: 20px 0;
+          border-radius: 5px;
+      }
+      .image-gallery {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+          gap: 20px;
+          margin: 20px 0;
+      }
+      .image-item {
+          text-align: center;
+          background: white;
+          padding: 15px;
+          border-radius: 10px;
+          box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+          transition: all 0.3s ease;
+          cursor: pointer;
+          border: 2px solid transparent;
+      }
+      .image-item:hover {
+          transform: translateY(-5px);
+          border-color: #007ACC;
+          box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+      }
+      .image-item.selected {
+          border-color: #007ACC;
+          background: #f0f8ff;
+      }
+      .image-item img {
+          max-width: 100%;
+          height: 200px;
+          object-fit: cover;
+          border-radius: 8px;
+          margin-bottom: 10px;
+      }
+      .image-title {
+          font-weight: bold;
+          color: #2c3e50;
+          margin-bottom: 5px;
+      }
+      .image-description {
+          font-size: 0.9em;
+          color: #666;
+      }
+      .pip-button {
+          background: #007ACC;
+          color: white;
+          border: none;
+          padding: 12px 24px;
+          border-radius: 6px;
+          font-size: 16px;
+          cursor: pointer;
+          margin: 10px;
+          transition: background 0.3s ease;
+      }
+      .pip-button:hover {
+          background: #005a9f;
+      }
+      .selected-image-info {
+          background: #f8f9fa;
+          padding: 15px;
+          border-radius: 8px;
+          margin: 20px 0;
+          border-left: 4px solid #28a745;
+      }
+      }
+      .test-image {
+          max-width: 100%;
+          height: 200px;
+          object-fit: cover;
+          border-radius: 8px;
+          border: 2px solid #ddd;
+          cursor: pointer;
+      }
+      .test-image:hover {
+          border-color: #007ACC;
+          box-shadow: 0 5px 15px rgba(0,122,204,0.3);
+      }
+      .image-caption {
+          margin-top: 10px;
+          font-weight: bold;
+          color: #2c3e50;
+      }
+      .instructions {
+          background: #e8f4fd;
+          padding: 20px;
+          border-radius: 10px;
+          margin: 20px 0;
+          border: 1px solid #bee5eb;
+      }
+      .btn {
+          background: #007ACC;
+          color: white;
+          padding: 12px 24px;
+          border: none;
+          border-radius: 6px;
+          cursor: pointer;
+          font-size: 16px;
+          margin: 5px;
+          transition: background 0.3s ease;
+      }
+      .btn:hover {
+          background: #005a9c;
+      }
+      .status {
+          margin: 15px 0;
+          padding: 10px;
+          border-radius: 5px;
+          font-weight: bold;
+      }
+      .success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+      .error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+      .info { background: #d1ecf1; color: #0c5460; border: 1px solid #b8daff; }
+      kbd {
+          background: #f4f4f4;
+          border: 1px solid #ccc;
+          border-radius: 3px;
+          padding: 2px 6px;
+          font-family: monospace;
+          font-size: 0.9em;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>🖼️ Picture-in-Picture Testing Page</h1>
+
+      <div class="instructions">
+        <h3>📋 How to Test PiP Functionality:</h3>
+        <ol>
+          <li>
+            <strong>Keyboard Shortcut:</strong> Press <kbd>Ctrl+Alt+I</kbd> to
+            activate PiP for the first suitable image
+          </li>
+          <li>
+            <strong>Menu Option:</strong> Go to View → Picture-in-Picture →
+            Image Picture-in-Picture
+          </li>
+          <li>
+            <strong>Command Palette:</strong> Press <kbd>Ctrl+Shift+P</kbd> and
+            type "Image PiP"
+          </li>
+          <li>
+            <strong>macOS Spaces Test:</strong> After opening PiP, switch
+            between Spaces using Mission Control
+          </li>
+        </ol>
+      </div>
+
+      <div class="test-section">
+        <h2>🌐 Online Test Images</h2>
+        <p>
+          These images should load from the internet and test actual image PiP
+          functionality:
+        </p>
+
+        <div class="image-gallery">
+          <div class="image-item">
+            <img
+              src="https://picsum.photos/400/300?random=1"
+              alt="Random Landscape"
+              class="test-image"
+              title="Random Landscape Photo"
+            />
+            <div class="image-caption">Random Landscape</div>
+          </div>
+
+          <div class="image-item">
+            <img
+              src="https://picsum.photos/400/300?random=2"
+              alt="Random Nature"
+              class="test-image"
+              title="Random Nature Photo"
+            />
+            <div class="image-caption">Random Nature</div>
+          </div>
+
+          <div class="image-item">
+            <img
+              src="https://picsum.photos/400/300?random=3"
+              alt="Random Architecture"
+              class="test-image"
+              title="Random Architecture Photo"
+            />
+            <div class="image-caption">Random Architecture</div>
+          </div>
+
+          <div class="image-item">
+            <img
+              src="https://via.placeholder.com/400x300/007ACC/ffffff?text=Test+Image+1"
+              alt="Blue Test Image"
+              class="test-image"
+              title="Blue Test Image"
+            />
+            <div class="image-caption">Blue Test Pattern</div>
+          </div>
+
+          <div class="image-item">
+            <img
+              src="https://via.placeholder.com/400x300/28a745/ffffff?text=Test+Image+2"
+              alt="Green Test Image"
+              class="test-image"
+              title="Green Test Image"
+            />
+            <div class="image-caption">Green Test Pattern</div>
+          </div>
+
+          <div class="image-item">
+            <img
+              src="https://via.placeholder.com/400x300/dc3545/ffffff?text=Test+Image+3"
+              alt="Red Test Image"
+              class="test-image"
+              title="Red Test Image"
+            />
+            <div class="image-caption">Red Test Pattern</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="test-section">
+        <h2>🧪 PiP Test Controls</h2>
+        <button class="btn" onclick="testPiP()">
+          🎬 Test PiP (JavaScript)
+        </button>
+        <button class="btn" onclick="logImages()">
+          📋 Log Available Images
+        </button>
+        <button class="btn" onclick="testSpaces()">
+          🌌 Test Spaces Compatibility
+        </button>
+
+        <div id="test-status" class="status info">
+          Ready for testing. Click a button above or use keyboard shortcuts.
+        </div>
+      </div>
+
+      <div class="test-section">
+        <h2>🔍 macOS Spaces Testing Instructions</h2>
+        <div class="instructions">
+          <h4>To test Spaces compatibility:</h4>
+          <ol>
+            <li>Open a PiP window using any method above</li>
+            <li>
+              Press <kbd>F3</kbd> or swipe up with 3 fingers to open Mission
+              Control
+            </li>
+            <li>Create a new Space or switch to an existing one</li>
+            <li>The PiP window should remain visible across all Spaces</li>
+            <li>Try dragging the PiP window around in different Spaces</li>
+          </ol>
+          <p>
+            <strong>Expected Behavior:</strong> PiP window should be visible in
+            ALL Spaces and remain floating above other windows.
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      function testPiP() {
+        const statusEl = document.getElementById("test-status");
+        statusEl.className = "status info";
+        statusEl.textContent = "Testing PiP functionality...";
+
+        // シミュレート：実際の実装では、C++側のPiP機能が呼び出される
+        const images = document.querySelectorAll(".test-image");
+        if (images.length > 0) {
+          statusEl.className = "status success";
+          statusEl.textContent = `Found ${images.length} images. PiP should activate on first suitable image.`;
+          console.log("PiP Test: Found images for testing", images);
+        } else {
+          statusEl.className = "status error";
+          statusEl.textContent = "No suitable images found for PiP testing.";
+        }
+      }
+
+      function logImages() {
+        const images = document.querySelectorAll("img");
+        console.log("All images on page:", images);
+
+        const validImages = Array.from(images).filter((img) => {
+          const rect = img.getBoundingClientRect();
+          return rect.width > 50 && rect.height > 50 && img.complete;
+        });
+
+        const statusEl = document.getElementById("test-status");
+        statusEl.className = "status info";
+        statusEl.textContent = `Found ${images.length} total images, ${validImages.length} suitable for PiP.`;
+
+        console.log("Valid PiP images:", validImages);
+      }
+
+      function testSpaces() {
+        const statusEl = document.getElementById("test-status");
+        statusEl.className = "status info";
+        statusEl.textContent =
+          "Spaces test: Open PiP first, then use Mission Control (F3) to test cross-Space visibility.";
+      }
+
+      // 画像読み込み完了をログ
+      document.addEventListener("DOMContentLoaded", function () {
+        const images = document.querySelectorAll(".test-image");
+        let loadedCount = 0;
+
+        images.forEach((img, index) => {
+          img.addEventListener("load", function () {
+            loadedCount++;
+            console.log(`Image ${index + 1} loaded:`, this.src);
+
+            if (loadedCount === images.length) {
+              console.log("All test images loaded successfully");
+              const statusEl = document.getElementById("test-status");
+              statusEl.className = "status success";
+              statusEl.textContent = `All ${images.length} test images loaded. Ready for PiP testing!`;
+            }
+          });
+
+          img.addEventListener("error", function () {
+            console.error(`Failed to load image ${index + 1}:`, this.src);
+          });
+        });
+      });
+    </script>
+  </body>
+</html>

@@ -67,8 +67,8 @@ add_executable(MyBrowser
     # Picture-in-Picture
     src/features/picture-in-picture/pictureinpicturemanager.cpp
     src/features/picture-in-picture/pictureinpicturemanager.h
-    src/features/picture-in-picture/pipwindow.cpp
-    src/features/picture-in-picture/pipwindow.h
+    src/features/picture-in-picture/macospipwindow.mm
+    src/features/picture-in-picture/macospipwindow.h
 
     # Core
     src/core/ui_constants.h
@@ -94,6 +94,14 @@ target_link_libraries(MyBrowser PRIVATE
     Qt6::WebEngineCore
     Qt6::WebEngineWidgets
 )
+
+# Add macOS-specific frameworks for PiP functionality
+if(APPLE)
+    target_link_libraries(MyBrowser PRIVATE
+        "-framework Cocoa"
+        "-framework Foundation"
+    )
+endif()
 
 # Standalone PiP executable
 add_executable(PiPStandalone

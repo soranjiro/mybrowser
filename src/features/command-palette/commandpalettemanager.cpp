@@ -307,7 +307,7 @@ void CommandPaletteManager::executeDeveloperCommand(const QString &command) {
   } else if (command == "picture-in-picture" || command == "pip" || command == "picture in picture") {
     // PictureInPictureManagerに処理を委譲
     if (PictureInPictureManager *pipManager = mainWindow->getPictureInPictureManager()) {
-      pipManager->togglePictureInPicture();
+      pipManager->createImagePiP(mainWindow->currentWebView());
     }
   } else if (command == "view source" || command == "source") {
     if (WebView *view = mainWindow->currentWebView()) {

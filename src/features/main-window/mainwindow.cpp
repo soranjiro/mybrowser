@@ -198,68 +198,16 @@ void MainWindow::createActions() {
 
   openLinkInNewTabAction = new QAction("Open Link in New Tab", this);
 
-  // Create independent Picture-in-Picture actions
-  elementPiPAction = new QAction("Element Picture-in-Picture", this);
-  elementPiPAction->setShortcut(QKeySequence("Ctrl+Alt+E"));
-  elementPiPAction->setStatusTip("Select any element to display in Picture-in-Picture mode");
-  elementPiPAction->setToolTip("Select Element for PiP (Ctrl+Alt+E)");
-
-  pagePiPAction = new QAction("Page Picture-in-Picture", this);
-  pagePiPAction->setShortcut(QKeySequence("Ctrl+Alt+P"));
-  pagePiPAction->setStatusTip("Display entire page in Picture-in-Picture mode");
-  pagePiPAction->setToolTip("Page PiP (Ctrl+Alt+P)");
-
-  screenshotPiPAction = new QAction("Screenshot Picture-in-Picture", this);
-  screenshotPiPAction->setShortcut(QKeySequence("Ctrl+Shift+S"));
-  screenshotPiPAction->setStatusTip("Create a screenshot-style Picture-in-Picture window");
-  screenshotPiPAction->setToolTip("Screenshot PiP (Ctrl+Shift+S)");
-
-  // Create standalone Picture-in-Picture action (separate process for macOS Spaces)
-  standaloneImagePiPAction = new QAction("Standalone Image PiP", this);
-  standaloneImagePiPAction->setShortcut(QKeySequence("Ctrl+Alt+S"));
-  standaloneImagePiPAction->setStatusTip("Open image in standalone Picture-in-Picture window (separate process)");
-  standaloneImagePiPAction->setToolTip("Standalone Image PiP (Ctrl+Alt+S) - macOS Spaces compatible");
-
-  exitAllPiPAction = new QAction("Exit All Picture-in-Picture", this);
-  exitAllPiPAction->setShortcut(QKeySequence("Ctrl+Alt+X"));
-  exitAllPiPAction->setStatusTip("Close all Picture-in-Picture windows");
-  exitAllPiPAction->setToolTip("Exit All PiP (Ctrl+Alt+X)");
-
-  // Create native Picture-in-Picture actions
-  nativeImagePiPAction = new QAction("Native Image PiP", this);
-  nativeImagePiPAction->setShortcut(QKeySequence("Ctrl+Alt+I"));
-  nativeImagePiPAction->setStatusTip("Open selected image in native Picture-in-Picture window");
-  nativeImagePiPAction->setToolTip("Native Image PiP (Ctrl+Alt+I)");
-
-  nativeVideoPiPAction = new QAction("Native Video PiP", this);
-  nativeVideoPiPAction->setShortcut(QKeySequence("Ctrl+Alt+V"));
-  nativeVideoPiPAction->setStatusTip("Open selected video in native Picture-in-Picture window");
-  nativeVideoPiPAction->setToolTip("Native Video PiP (Ctrl+Alt+V)");
-
-  nativeElementPiPAction = new QAction("Native Element PiP", this);
-  nativeElementPiPAction->setShortcut(QKeySequence("Ctrl+Alt+E"));
-  nativeElementPiPAction->setStatusTip("Open selected element in native Picture-in-Picture window");
-  nativeElementPiPAction->setToolTip("Native Element PiP (Ctrl+Alt+E)");
-
-  closeAllNativePiPAction = new QAction("Close All Native PiP", this);
-  closeAllNativePiPAction->setShortcut(QKeySequence("Ctrl+Alt+X"));
-  closeAllNativePiPAction->setStatusTip("Close all native Picture-in-Picture windows");
-  closeAllNativePiPAction->setToolTip("Close All Native PiP (Ctrl+Alt+X)");
-
-  // Add all PiP actions to MainWindow for global shortcuts
-  this->addAction(elementPiPAction);
-  this->addAction(pagePiPAction);
-  this->addAction(screenshotPiPAction);
-  this->addAction(standaloneImagePiPAction);
-  this->addAction(exitAllPiPAction);
-  this->addAction(nativeImagePiPAction);
-  this->addAction(nativeVideoPiPAction);
-  this->addAction(nativeElementPiPAction);
-  this->addAction(closeAllNativePiPAction);
-
   // Setup manager actions
   if (pictureInPictureManager) {
     pictureInPictureManager->setupActions();
+
+    // Add PiP action to MainWindow for global shortcut
+    QAction *imagePiPAction = pictureInPictureManager->getImagePiPAction();
+    if (imagePiPAction) {
+      this->addAction(imagePiPAction);
+      qDebug() << "PiP action added with shortcut:" << imagePiPAction->shortcut().toString();
+    }
   }
   if (commandPaletteManager) {
     qDebug() << "Setting up command palette manager actions...";
@@ -391,25 +339,6 @@ void MainWindow::createMenus() {
   if (pictureInPictureManager) {
     pictureInPictureManager->addToMenu(viewMenu);
   }
-
-  // Add independent Picture-in-Picture actions
-  viewMenu->addSeparator();
-  QMenu *pipMenu = viewMenu->addMenu("Independent Picture-in-Picture");
-  pipMenu->addAction(elementPiPAction);
-  pipMenu->addAction(pagePiPAction);
-  pipMenu->addAction(screenshotPiPAction);
-  pipMenu->addSeparator();
-  pipMenu->addAction(standaloneImagePiPAction);
-  pipMenu->addSeparator();
-  pipMenu->addAction(exitAllPiPAction);
-
-  // Add native Picture-in-Picture submenu
-  QMenu *nativePipMenu = viewMenu->addMenu("Native Picture-in-Picture");
-  nativePipMenu->addAction(nativeImagePiPAction);
-  nativePipMenu->addAction(nativeVideoPiPAction);
-  nativePipMenu->addAction(nativeElementPiPAction);
-  nativePipMenu->addSeparator();
-  nativePipMenu->addAction(closeAllNativePiPAction);
 
   QMenu *historyMenu = menuBar()->addMenu("&History");
   historyMenu->addAction(viewHistoryAction);
@@ -550,60 +479,6 @@ void MainWindow::setupConnections() {
       view->load(url);
     }
   });
-
-  // Connect independent Picture-in-Picture actions to new native PiP functions
-  if (pictureInPictureManager) {
-    connect(elementPiPAction, &QAction::triggered, this, [this]() {
-      if (WebView *view = currentWebView()) {
-        pictureInPictureManager->createNativeElementPiP(view);
-      }
-    });
-
-    connect(pagePiPAction, &QAction::triggered, this, [this]() {
-      if (WebView *view = currentWebView()) {
-        pictureInPictureManager->createNativeElementPiP(view);
-      }
-    });
-
-    connect(screenshotPiPAction, &QAction::triggered, this, [this]() {
-      if (WebView *view = currentWebView()) {
-        pictureInPictureManager->createNativeElementPiP(view);
-      }
-    });
-
-    connect(standaloneImagePiPAction, &QAction::triggered, this, [this]() {
-      if (WebView *view = currentWebView()) {
-        pictureInPictureManager->createStandaloneImagePiP(view);
-      }
-    });
-
-    connect(exitAllPiPAction, &QAction::triggered, this, [this]() {
-      pictureInPictureManager->closeAllNativePiP();
-    });
-
-    // Connect native Picture-in-Picture actions
-    connect(nativeImagePiPAction, &QAction::triggered, this, [this]() {
-      if (WebView *view = currentWebView()) {
-        pictureInPictureManager->createNativeImagePiP(view);
-      }
-    });
-
-    connect(nativeVideoPiPAction, &QAction::triggered, this, [this]() {
-      if (WebView *view = currentWebView()) {
-        pictureInPictureManager->createNativeVideoPiP(view);
-      }
-    });
-
-    connect(nativeElementPiPAction, &QAction::triggered, this, [this]() {
-      if (WebView *view = currentWebView()) {
-        pictureInPictureManager->createNativeElementPiP(view);
-      }
-    });
-
-    connect(closeAllNativePiPAction, &QAction::triggered, this, [this]() {
-      pictureInPictureManager->closeAllNativePiP();
-    });
-  }
 }
 
 WebView *MainWindow::currentWebView() const {
@@ -630,11 +505,6 @@ void MainWindow::newTab() {
     if (ok) {
       history.prepend({webView->title(), webView->url()});
       // Limit history size if needed
-
-      // 自動的にすべての動画をPicture-in-Picture対応にする
-      if (pictureInPictureManager) {
-        pictureInPictureManager->enablePiPForAllVideos(webView);
-      }
     }
     backAction->setEnabled(webView->page()->history()->canGoBack());
     forwardAction->setEnabled(webView->page()->history()->canGoForward());
@@ -816,11 +686,6 @@ void MainWindow::handleContextMenuRequested(const QPoint &pos) {
   webAction = QWebEnginePage::SelectAll;
   contextMenu.addAction(view->page()->action(webAction));
   contextMenu.addSeparator();
-
-  // Add manager context menu actions
-  if (pictureInPictureManager) {
-    pictureInPictureManager->addToContextMenu(&contextMenu);
-  }
 
   contextMenu.exec(view->mapToGlobal(pos));
 }

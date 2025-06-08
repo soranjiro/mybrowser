@@ -110,19 +110,6 @@ private:
   QAction *settingsAction;
   QAction *devToolsAction;
 
-  // Picture-in-Picture actions for independent PiP features
-  QAction *elementPiPAction;
-  QAction *pagePiPAction;
-  QAction *screenshotPiPAction;
-  QAction *standaloneImagePiPAction;
-  QAction *exitAllPiPAction;
-
-  // Native Picture-in-Picture actions for new native Qt-based PiP windows
-  QAction *nativeImagePiPAction;
-  QAction *nativeVideoPiPAction;
-  QAction *nativeElementPiPAction;
-  QAction *closeAllNativePiPAction;
-
   // Toggle actions for panels
   QAction *toggleTabBarAction;
 

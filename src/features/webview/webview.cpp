@@ -956,3 +956,8 @@ void WebView::handleSwipeForward() {
     page()->history()->forward();
   }
 }
+
+void WebView::handlePipImageSelection(const QString &imageUrl, const QString &title) {
+  qDebug() << "WebView: PiP image selection handled:" << title << imageUrl;
+  emit pipImageRequested(imageUrl, title);
+}
