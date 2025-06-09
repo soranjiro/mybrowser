@@ -210,6 +210,36 @@ void MacOSPiPWindow::showImageFromUrl(const QString &imageUrl, const QString &ti
     }
 }
 
+void MacOSPiPWindow::showImageFromBase64(const QString &base64Data, const QString &title) {
+    qDebug() << "Loading image from Base64 data:" << title;
+
+    if (base64Data.startsWith("data:image/")) {
+        // Extract the base64 data part (after the comma)
+        int commaIndex = base64Data.indexOf(',');
+        if (commaIndex != -1) {
+            QString base64String = base64Data.mid(commaIndex + 1);
+            QByteArray imageData = QByteArray::fromBase64(base64String.toUtf8());
+
+            QPixmap pixmap;
+            if (pixmap.loadFromData(imageData)) {
+                // Scale the image to a reasonable size while maintaining aspect ratio
+                QPixmap scaledPixmap = pixmap.scaled(600, 400, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+                showImage(scaledPixmap, title);
+                qDebug() << "Successfully loaded image from Base64 data:" << title;
+            } else {
+                qDebug() << "Failed to create pixmap from Base64 data";
+                showPlaceholderImage(title + " (Base64 Load Failed)");
+            }
+        } else {
+            qDebug() << "Invalid Base64 data format";
+            showPlaceholderImage(title + " (Invalid Base64)");
+        }
+    } else {
+        qDebug() << "Invalid Base64 data format - missing data:image/ prefix";
+        showPlaceholderImage(title + " (Invalid Format)");
+    }
+}
+
 void MacOSPiPWindow::showPlaceholderImage(const QString &text) {
     QPixmap placeholder(300, 200);
     placeholder.fill(QColor(64, 128, 255, 180));

@@ -34,6 +34,7 @@ public:
   // Display images
   void showImage(const QPixmap &pixmap, const QString &title = "");
   void showImageFromUrl(const QString &imageUrl, const QString &title = "");
+  void showImageFromBase64(const QString &base64Data, const QString &title = "");
 
 protected:
   // Enable window dragging with mouse events
