@@ -1,7 +1,7 @@
 .DS_Store
 
 build/*
-!build/Mybrowser
+!build/MyBrowser
 
 *.log
 
