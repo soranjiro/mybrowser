@@ -4,9 +4,11 @@
 #include "macospipwindow.h"
 #include <QAction>
 #include <QDebug>
+#include <QFile>
 #include <QKeySequence>
 #include <QMenu>
 #include <QPixmap>
+#include <QTextStream>
 #include <QTimer>
 
 PictureInPictureManager::PictureInPictureManager(MainWindow *parent)
@@ -523,243 +525,86 @@ void PictureInPictureManager::onVideoPiPTriggered() {
 
 QString PictureInPictureManager::generateVideoExtractionScript() const {
   return R"(
+// Load enhanced PiP functionality
 (function() {
-    let targetVideo = null;
-    let targetContainer = null;
-
-    // Find hovered or focused videos first
-    const activeVideos = document.querySelectorAll('video:hover, video:focus, video:active');
-    if (activeVideos.length > 0) {
-        targetVideo = activeVideos[0];
-        targetContainer = targetVideo.closest('.video-item') || targetVideo.parentElement;
+    // Check if PiP handler already exists
+    if (window.pictureInPictureHandler) {
+        console.log('PiP handler already exists, attempting video PiP...');
+        return window.pictureInPictureHandler.forceVideoStreamingPiP();
     }
 
-    // Otherwise find largest visible video
-    if (!targetVideo) {
-        const videos = document.querySelectorAll('video');
-        let bestVideo = null;
-        let maxArea = 0;
+    // Load the enhanced PiP script if not loaded
+    if (!window.PIP_CONFIG) {
+        // Insert the enhanced PiP script
+        const script = document.createElement('script');
+        script.textContent = `)" +
+         getEnhancedPiPScript() + R"(`;
+        document.head.appendChild(script);
 
-        for (let video of videos) {
-            const rect = video.getBoundingClientRect();
-            if (rect.width >= 100 && rect.height >= 50 && video.readyState >= 2) {
-                const area = rect.width * rect.height;
-                if (area > maxArea) {
-                    maxArea = area;
-                    bestVideo = video;
-                }
+        // Wait for initialization
+        setTimeout(function() {
+            if (window.pictureInPictureHandler) {
+                console.log('Enhanced PiP handler loaded, attempting video PiP...');
+                return window.pictureInPictureHandler.forceVideoStreamingPiP();
+            } else {
+                console.error('Failed to load enhanced PiP handler');
+                return { success: false, message: 'Failed to load enhanced PiP handler' };
+            }
+        }, 500);
+    } else {
+        // PiP script is loaded, use it
+        if (window.pictureInPictureHandler) {
+            console.log('Using existing PiP handler for video PiP...');
+            return window.pictureInPictureHandler.forceVideoStreamingPiP();
+        }
+    }
+
+    // Fallback to basic video detection if enhanced script fails
+    console.log('Falling back to basic video detection...');
+    let targetVideo = null;
+
+    // Find videos
+    const videos = document.querySelectorAll('video');
+    let bestVideo = null;
+    let maxArea = 0;
+
+    for (let video of videos) {
+        const rect = video.getBoundingClientRect();
+        if (rect.width >= 100 && rect.height >= 50 && video.readyState >= 2) {
+            const area = rect.width * rect.height;
+            if (area > maxArea) {
+                maxArea = area;
+                bestVideo = video;
             }
         }
-        targetVideo = bestVideo;
-        if (targetVideo) {
-            targetContainer = targetVideo.closest('.video-item') || targetVideo.parentElement;
-        }
     }
+    targetVideo = bestVideo;
 
     if (targetVideo) {
-        try {
-            // Add PiP overlay to the original video
-            addVideoPiPOverlay(targetVideo, targetContainer);
+        const rect = targetVideo.getBoundingClientRect();
+        let videoUrl = targetVideo.src || targetVideo.currentSrc;
+        let isVideoWithNativePiPDisabled = targetVideo.hasAttribute('disablepictureinpicture');
 
-            const rect = targetVideo.getBoundingClientRect();
+        const result = {
+            success: true,
+            videoUrl: videoUrl,
+            isDisabledPiP: isVideoWithNativePiPDisabled,
+            title: targetVideo.title || 'Selected Video',
+            width: rect.width,
+            height: rect.height,
+            duration: targetVideo.duration,
+            currentTime: targetVideo.currentTime,
+            paused: targetVideo.paused,
+            readyState: targetVideo.readyState,
+            videoWidth: targetVideo.videoWidth,
+            videoHeight: targetVideo.videoHeight
+        };
 
-            // Enhanced video URL extraction for disablepictureinpicture videos
-            let videoUrl = targetVideo.src || targetVideo.currentSrc;
-            let isVideoWithNativePiPDisabled = targetVideo.hasAttribute('disablepictureinpicture');
-            let videoData = null;
-
-            console.log('Processing video with disablepictureinpicture:', isVideoWithNativePiPDisabled);
-
-            // If no direct URL, check source elements
-            if (!videoUrl || videoUrl === '') {
-                const sources = targetVideo.querySelectorAll('source');
-                for (let source of sources) {
-                    if (source.src) {
-                        videoUrl = source.src;
-                        break;
-                    }
-                }
-            }
-
-            // If still no URL, check data attributes
-            if (!videoUrl || videoUrl === '') {
-                videoUrl = targetVideo.getAttribute('data-src') ||
-                          targetVideo.getAttribute('data-url') ||
-                          targetVideo.getAttribute('data-video-url') ||
-                          targetContainer?.getAttribute('data-url') ||
-                          targetContainer?.getAttribute('data-src') || '';
-            }
-
-            // Enhanced handling for videos with Blob URLs or Base64 data
-            if (videoUrl && (videoUrl.startsWith('blob:') || videoUrl.startsWith('data:'))) {
-                console.log('Detected Blob/Data URL for disablepictureinpicture video:', videoUrl);
-
-                // For Blob URLs, we'll pass the URL directly to the macOS implementation
-                // For Data URLs, extract the video data
-                if (videoUrl.startsWith('data:video/')) {
-                    try {
-                        videoData = videoUrl; // Pass the full data URL
-                    } catch (e) {
-                        console.error('Failed to process data URL:', e);
-                    }
-                }
-            }
-
-            // Fallback: Try to capture current video frame if no URL found
-            if (!videoUrl || videoUrl === '') {
-                console.log('No video URL found, attempting frame capture for disablepictureinpicture video');
-                try {
-                    const canvas = document.createElement('canvas');
-                    const ctx = canvas.getContext('2d');
-                    canvas.width = targetVideo.videoWidth || targetVideo.offsetWidth;
-                    canvas.height = targetVideo.videoHeight || targetVideo.offsetHeight;
-
-                    // Draw current video frame
-                    ctx.drawImage(targetVideo, 0, 0, canvas.width, canvas.height);
-
-                    // Get frame data as base64
-                    videoData = canvas.toDataURL('image/png');
-                    videoUrl = 'frame-capture://current-frame';
-
-                    console.log('Successfully captured video frame for PiP');
-                } catch (e) {
-                    console.error('Frame capture failed:', e);
-                    // Final fallback
-                    videoUrl = 'placeholder://disablepictureinpicture-video';
-                }
-            }
-
-            const result = {
-                success: true,
-                videoUrl: videoUrl,
-                videoData: videoData, // Additional data for Blob/Data URLs or frame captures
-                isDisabledPiP: isVideoWithNativePiPDisabled,
-                title: targetVideo.title ||
-                       targetVideo.getAttribute('alt') ||
-                       targetContainer?.querySelector('h1, h2, h3, .video-overlay, .title')?.textContent ||
-                       (isVideoWithNativePiPDisabled ? 'PiP無効動画' : 'Selected Video'),
-                width: rect.width,
-                height: rect.height,
-                duration: targetVideo.duration,
-                currentTime: targetVideo.currentTime,
-                paused: targetVideo.paused,
-                muted: targetVideo.muted,
-                volume: targetVideo.volume,
-                readyState: targetVideo.readyState,
-                networkState: targetVideo.networkState,
-                videoWidth: targetVideo.videoWidth,
-                videoHeight: targetVideo.videoHeight
-            };
-
-            console.log('Video PiP extraction result:', result);
-            return result;
-        } catch (error) {
-            console.error('Error processing video:', error);
-            return { success: false, message: 'Error processing video: ' + error.message };
-        }
+        console.log('Basic video PiP extraction result:', result);
+        return result;
     }
 
     return { success: false, message: 'No suitable videos found' };
-
-    // Helper function to add PiP overlay for video
-    function addVideoPiPOverlay(video, container) {
-        // Remove any existing overlay
-        const existingOverlay = video.parentElement.querySelector('.pip-video-overlay');
-        if (existingOverlay) {
-            existingOverlay.remove();
-        }
-
-        // Create PiP overlay
-        const overlay = document.createElement('div');
-        overlay.className = 'pip-video-overlay';
-        overlay.innerHTML = '🎬 Video PiP中';
-        overlay.style.cssText = `
-            position: absolute;
-            top: 5px;
-            right: 5px;
-            background: linear-gradient(135deg, #FF6B6B, #FF8E53);
-            color: white;
-            padding: 6px 10px;
-            border-radius: 6px;
-            font-size: 12px;
-            font-weight: bold;
-            z-index: 1000;
-            pointer-events: none;
-            font-family: -apple-system, BlinkMacSystemFont, sans-serif;
-            box-shadow: 0 2px 8px rgba(255, 107, 107, 0.3);
-            animation: videoPipPulse 2s ease-in-out infinite;
-        `;
-
-        // Add CSS animation for the video pulse effect
-        if (!document.querySelector('#video-pip-animation-styles')) {
-            const style = document.createElement('style');
-            style.id = 'video-pip-animation-styles';
-            style.textContent = `
-                @keyframes videoPipPulse {
-                    0%, 100% {
-                        opacity: 1;
-                        transform: scale(1);
-                    }
-                    50% {
-                        opacity: 0.8;
-                        transform: scale(1.05);
-                    }
-                }
-                .pip-video-border-effect {
-                    position: relative;
-                    overflow: hidden;
-                }
-                .pip-video-border-effect::after {
-                    content: '';
-                    position: absolute;
-                    top: -2px;
-                    left: -2px;
-                    right: -2px;
-                    bottom: -2px;
-                    background: linear-gradient(45deg, #FF6B6B, #FF8E53, #FF6B6B);
-                    border-radius: 8px;
-                    z-index: -1;
-                    animation: videoPipBorderRotate 3s linear infinite;
-                }
-                @keyframes videoPipBorderRotate {
-                    0% { transform: rotate(0deg); }
-                    100% { transform: rotate(360deg); }
-                }
-            `;
-            document.head.appendChild(style);
-        }
-
-        // Make sure parent has relative positioning
-        const parent = video.parentElement;
-        if (getComputedStyle(parent).position === 'static') {
-            parent.style.position = 'relative';
-        }
-
-        parent.appendChild(overlay);
-
-        // Add border effect to the video
-        video.classList.add('pip-video-border-effect');
-        video.style.outline = '3px solid rgba(255, 107, 107, 0.8)';
-        video.style.borderRadius = '6px';
-        video.style.boxShadow = '0 0 20px rgba(255, 107, 107, 0.4)';
-
-        // Remove overlay and effects after a longer duration
-        const removeEffects = () => {
-            if (overlay.parentElement) {
-                overlay.remove();
-            }
-            video.classList.remove('pip-video-border-effect');
-            video.style.outline = '';
-            video.style.borderRadius = '';
-            video.style.boxShadow = '';
-        };
-
-        // Remove after 15 seconds or when video is clicked
-        setTimeout(removeEffects, 15000);
-
-        // Also remove on click
-        video.addEventListener('click', removeEffects, { once: true });
-    }
 })();
 )";
 }
@@ -852,4 +697,288 @@ void PictureInPictureManager::cleanupClosedPiPWindows() {
       ++it;
     }
   }
+}
+
+QString PictureInPictureManager::getEnhancedPiPScript() const {
+  // Read and return the enhanced PiP script
+  QString scriptPath = ":/pip_enhanced.js"; // Using Qt resource system
+  QFile file(scriptPath);
+
+  if (file.open(QIODevice::ReadOnly)) {
+    QTextStream stream(&file);
+    return stream.readAll();
+  }
+
+  // Fallback: return inline enhanced PiP script if resource not found
+  return R"(
+// Enhanced Picture-in-Picture JavaScript Functionality
+window.PIP_CONFIG = {
+  DETECTION_TIMEOUT: 30000,
+  RETRY_DELAY: 1000,
+  MAX_RETRIES: 5,
+  THROTTLE_DELAY: 100,
+  DEBOUNCE_DELAY: 300,
+  FRAME_CAPTURE_FPS: 15,
+  FRAME_CAPTURE_MAX_DURATION: 600000,
+
+  SITE_CONFIGS: {
+    'youtube.com': {
+      selectors: [
+        'ytd-app video',
+        'video[src*="googlevideo"]',
+        '.ytp-video-container video',
+        '#movie_player video',
+        '.html5-video-player video',
+        'video.video-stream',
+        'video[class*="video"]',
+        '.ytp-html5-video',
+        'video[autoplay]',
+        'video:not([width="0"]):not([height="0"])',
+        'ytd-player video',
+        '.ytd-player-container video',
+        'video[poster]',
+        'video[controls]',
+        'video[preload]',
+        '.player-container video',
+        'video.html5-main-video',
+        'div[id*="player"] video'
+      ],
+      waitTime: 8000,
+      attributes: ['disablepictureinpicture', 'controlslist'],
+      customLogic: function(videos) {
+        return videos.filter(function(v) { return v.readyState >= 2 && !v.paused; });
+      }
+    }
+  }
+};
+
+// Utility functions
+window.PiPUtils = class {
+  static safeExecute(fn, context, ...args) {
+    try {
+      return fn.apply(context, args);
+    } catch (error) {
+      console.error('PiP Safe Execute Error:', error);
+      return null;
+    }
+  }
+
+  static throttle(func, delay) {
+    let timeoutId;
+    let lastExecTime = 0;
+    return function (...args) {
+      const currentTime = Date.now();
+      if (currentTime - lastExecTime > delay) {
+        func.apply(this, args);
+        lastExecTime = currentTime;
+      } else {
+        clearTimeout(timeoutId);
+        timeoutId = setTimeout(() => func.apply(this, args), delay);
+      }
+    };
+  }
+
+  static debounce(func, delay) {
+    let timeoutId;
+    return function (...args) {
+      clearTimeout(timeoutId);
+      timeoutId = setTimeout(() => func.apply(this, args), delay);
+    };
+  }
+};
+
+// Main PiP Handler
+window.PictureInPictureHandler = class {
+  constructor() {
+    this.initializeHandler();
+  }
+
+  initializeHandler() {
+    console.log('Enhanced PiP Handler initialized');
+    this.setupPerformanceMonitoring();
+  }
+
+  setupPerformanceMonitoring() {
+    this.stats = {
+      detectionAttempts: 0,
+      successfulDetections: 0,
+      errors: 0
+    };
+  }
+
+  forceVideoStreamingPiP() {
+    console.log('Starting enhanced video streaming PiP...');
+    this.stats.detectionAttempts++;
+
+    const hostname = window.location.hostname;
+    const siteConfig = window.PIP_CONFIG.SITE_CONFIGS[hostname] || {};
+
+    // Enhanced video detection with site-specific logic
+    const videos = this.detectVideos(siteConfig);
+
+    if (videos.length === 0) {
+      console.log('No videos found, trying fallback detection...');
+      return this.fallbackVideoDetection();
+    }
+
+    // Score and select best video
+    const bestVideo = this.selectBestVideo(videos, siteConfig);
+
+    if (bestVideo) {
+      this.stats.successfulDetections++;
+      return this.processVideoForPiP(bestVideo);
+    }
+
+    this.stats.errors++;
+    return { success: false, message: 'No suitable video found for PiP' };
+  }
+
+  detectVideos(siteConfig) {
+    const selectors = siteConfig.selectors || ['video'];
+    const videos = [];
+
+    for (const selector of selectors) {
+      try {
+        const elements = document.querySelectorAll(selector);
+        for (const element of elements) {
+          if (this.isValidVideo(element)) {
+            videos.push(element);
+          }
+        }
+      } catch (error) {
+        console.warn('Selector failed:', selector, error);
+      }
+    }
+
+    return [...new Set(videos)]; // Remove duplicates
+  }
+
+  isValidVideo(video) {
+    if (!video || video.tagName !== 'VIDEO') return false;
+
+    const rect = video.getBoundingClientRect();
+    return rect.width >= 50 && rect.height >= 50 && video.readyState >= 1;
+  }
+
+  selectBestVideo(videos, siteConfig) {
+    let bestVideo = null;
+    let bestScore = 0;
+
+    for (const video of videos) {
+      const score = this.scoreVideo(video, siteConfig);
+      if (score > bestScore) {
+        bestScore = score;
+        bestVideo = video;
+      }
+    }
+
+    return bestVideo;
+  }
+
+  scoreVideo(video, siteConfig) {
+    let score = 0;
+    const rect = video.getBoundingClientRect();
+
+    // Size scoring
+    score += Math.min(rect.width * rect.height / 10000, 100);
+
+    // Ready state scoring
+    score += video.readyState * 10;
+
+    // Playing state scoring
+    if (!video.paused) score += 50;
+
+    // Visibility scoring
+    if (rect.top >= 0 && rect.left >= 0) score += 20;
+
+    // Custom logic from site config
+    if (siteConfig.customLogic) {
+      try {
+        const customResult = siteConfig.customLogic([video]);
+        if (customResult.length > 0) score += 30;
+      } catch (error) {
+        console.warn('Custom logic failed:', error);
+      }
+    }
+
+    return score;
+  }
+
+  processVideoForPiP(video) {
+    const rect = video.getBoundingClientRect();
+    const videoUrl = video.src || video.currentSrc;
+    const isDisabledPiP = video.hasAttribute('disablepictureinpicture');
+
+    // Force remove PiP restrictions
+    this.forceRemoveDisablePiP(video);
+
+    const result = {
+      success: true,
+      videoUrl: videoUrl,
+      isDisabledPiP: isDisabledPiP,
+      title: this.getVideoTitle(video),
+      width: rect.width,
+      height: rect.height,
+      duration: video.duration,
+      currentTime: video.currentTime,
+      paused: video.paused,
+      readyState: video.readyState,
+      videoWidth: video.videoWidth,
+      videoHeight: video.videoHeight,
+      enhancedPiP: true
+    };
+
+    console.log('Enhanced PiP processing result:', result);
+    return result;
+  }
+
+  forceRemoveDisablePiP(video) {
+    try {
+      // Remove disablepictureinpicture attribute
+      video.removeAttribute('disablepictureinpicture');
+
+      // Remove controlslist restrictions
+      const controlsList = video.getAttribute('controlslist');
+      if (controlsList) {
+        const newControlsList = controlsList.replace(/nopip|no-pip/gi, '').trim();
+        if (newControlsList) {
+          video.setAttribute('controlslist', newControlsList);
+        } else {
+          video.removeAttribute('controlslist');
+        }
+      }
+
+      console.log('Successfully removed PiP restrictions from video');
+    } catch (error) {
+      console.warn('Failed to remove PiP restrictions:', error);
+    }
+  }
+
+  getVideoTitle(video) {
+    return video.title ||
+           video.getAttribute('aria-label') ||
+           document.title ||
+           'Enhanced PiP Video';
+  }
+
+  fallbackVideoDetection() {
+    console.log('Using fallback video detection...');
+    const videos = document.querySelectorAll('video');
+
+    for (const video of videos) {
+      if (this.isValidVideo(video)) {
+        return this.processVideoForPiP(video);
+      }
+    }
+
+    return { success: false, message: 'No videos found with fallback detection' };
+  }
+};
+
+// Initialize the enhanced PiP handler
+if (!window.pictureInPictureHandler) {
+  window.pictureInPictureHandler = new window.PictureInPictureHandler();
+  console.log('Enhanced PiP handler initialized and ready');
+}
+)";
 }

@@ -1,5 +1,232 @@
 // Picture-in-Picture JavaScript Functionality
 
+// ===== エラーハンドリングとパフォーマンス最適化の定数 =====
+const PIP_CONFIG = {
+  // タイムアウト設定
+  DETECTION_TIMEOUT: 30000, // 30秒
+  RETRY_DELAY: 1000, // 1秒
+  MAX_RETRIES: 5,
+
+  // パフォーマンス設定
+  THROTTLE_DELAY: 100, // スロットリング遅延（ミリ秒）
+  DEBOUNCE_DELAY: 300, // デバウンス遅延（ミリ秒）
+
+  // フレームキャプチャ設定
+  FRAME_CAPTURE_FPS: 15, // フレームレート
+  FRAME_CAPTURE_MAX_DURATION: 600000, // 10分
+
+  // サイト固有設定
+  SITE_CONFIGS: {
+    "youtube.com": {
+      selectors: [
+        "ytd-app video",
+        'video[src*="googlevideo"]',
+        ".ytp-video-container video",
+        "#movie_player video",
+        ".html5-video-player video",
+        "video.video-stream",
+        'video[class*="video"]',
+        ".ytp-html5-video",
+        "video[autoplay]",
+        'video:not([width="0"]):not([height="0"])',
+        "ytd-player video",
+        ".ytd-player-container video",
+        "video[poster]",
+        "video[controls]",
+        "video[preload]",
+        ".player-container video",
+        "video.html5-main-video",
+        'div[id*="player"] video',
+      ],
+      waitTime: 8000,
+      attributes: ["disablepictureinpicture", "controlslist"],
+      customLogic: function (videos) {
+        // YouTube固有のロジック
+        return videos.filter((v) => v.readyState >= 2 && !v.paused);
+      },
+    },
+    "tver.jp": {
+      selectors: [
+        ".tver-player video",
+        "div[class*='Player'] video",
+        ".media-player video",
+        "video[class*='player']",
+        ".video-container video",
+        "video.tver-video",
+        ".player-wrapper video",
+        "video[autoplay]",
+        "video:not([width='0']):not([height='0'])",
+        ".video-js video",
+        "video[poster]",
+        "video[controls]",
+        "video[preload]",
+        "div[id*='player'] video",
+        ".jwplayer video",
+        "video.jw-video",
+        "video[data-*]",
+      ],
+      waitTime: 10000,
+      attributes: ["disablepictureinpicture", "controlslist"],
+      customLogic: function (videos) {
+        // TVar固有のロジック
+        return videos.filter((v) => v.videoWidth > 100 && v.videoHeight > 100);
+      },
+    },
+  },
+};
+
+// ===== ユーティリティ関数 =====
+class PiPUtils {
+  // エラーハンドリング付きの非同期実行
+  static async safeExecute(fn, context = "Unknown", timeout = 10000) {
+    try {
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error(`Timeout: ${context}`)), timeout)
+      );
+
+      const result = await Promise.race([fn(), timeoutPromise]);
+      return { success: true, result };
+    } catch (error) {
+      console.error(`[PiP Error] ${context}:`, error);
+      return { success: false, error };
+    }
+  }
+
+  // スロットリング関数
+  static throttle(func, delay) {
+    let timeoutId;
+    let lastExecTime = 0;
+    return function (...args) {
+      const currentTime = Date.now();
+
+      if (currentTime - lastExecTime > delay) {
+        func.apply(this, args);
+        lastExecTime = currentTime;
+      } else {
+        clearTimeout(timeoutId);
+        timeoutId = setTimeout(() => {
+          func.apply(this, args);
+          lastExecTime = Date.now();
+        }, delay - (currentTime - lastExecTime));
+      }
+    };
+  }
+
+  // デバウンス関数
+  static debounce(func, delay) {
+    let timeoutId;
+    return function (...args) {
+      clearTimeout(timeoutId);
+      timeoutId = setTimeout(() => func.apply(this, args), delay);
+    };
+  }
+
+  // 要素の可視性をチェック
+  static isElementVisible(element) {
+    if (!element) return false;
+
+    const rect = element.getBoundingClientRect();
+    const style = window.getComputedStyle(element);
+
+    return (
+      rect.width > 0 &&
+      rect.height > 0 &&
+      style.display !== "none" &&
+      style.visibility !== "hidden" &&
+      style.opacity !== "0"
+    );
+  }
+
+  // 動画要素の品質スコア計算
+  static calculateVideoScore(video, siteConfig = null) {
+    let score = 0;
+
+    try {
+      // 基本的なスコア計算
+      if (video.videoWidth && video.videoHeight) {
+        score += Math.log(video.videoWidth * video.videoHeight) * 2;
+      }
+
+      if (video.readyState >= 3) score += 30;
+      else if (video.readyState >= 2) score += 20;
+      else if (video.readyState >= 1) score += 10;
+
+      if (!video.paused) score += 25;
+      if (video.currentTime > 0) score += 15;
+      if (video.duration > 0) score += 10;
+      if (!video.muted) score += 5;
+
+      // 可視性チェック
+      if (this.isElementVisible(video)) score += 20;
+
+      // サイト固有のボーナス
+      if (siteConfig && siteConfig.customLogic) {
+        const customVideos = siteConfig.customLogic([video]);
+        if (customVideos.length > 0) score += 50;
+      }
+
+      // 属性チェック
+      if (video.hasAttribute("disablepictureinpicture")) score -= 10;
+      if (video.hasAttribute("autoplay")) score += 5;
+      if (video.hasAttribute("controls")) score += 5;
+      if (video.poster) score += 5;
+    } catch (error) {
+      console.warn("[PiP] Error calculating video score:", error);
+    }
+
+    return Math.max(0, score);
+  }
+
+  // サイト設定を取得
+  static getSiteConfig(url = window.location.href) {
+    for (const [domain, config] of Object.entries(PIP_CONFIG.SITE_CONFIGS)) {
+      if (url.includes(domain)) {
+        return config;
+      }
+    }
+    return null;
+  }
+
+  // パフォーマンス監視
+  static startPerformanceMonitoring() {
+    if (window.pipPerformanceMonitor) return;
+
+    window.pipPerformanceMonitor = {
+      startTime: Date.now(),
+      operations: [],
+
+      log: function (operation, duration) {
+        this.operations.push({
+          operation,
+          duration,
+          timestamp: Date.now(),
+        });
+
+        if (this.operations.length > 100) {
+          this.operations = this.operations.slice(-50);
+        }
+      },
+
+      getStats: function () {
+        const totalTime = Date.now() - this.startTime;
+        const avgDuration =
+          this.operations.reduce((sum, op) => sum + op.duration, 0) /
+          this.operations.length;
+
+        return {
+          totalTime,
+          operationCount: this.operations.length,
+          averageDuration: avgDuration || 0,
+          recentOperations: this.operations.slice(-10),
+        };
+      },
+    };
+  }
+}
+
+// パフォーマンス監視を開始
+PiPUtils.startPerformanceMonitoring();
+
 // PictureInPictureHandlerが既に存在するかチェック
 if (typeof window.PictureInPictureHandler === "undefined") {
   class PictureInPictureHandler {
@@ -1139,18 +1366,6 @@ if (typeof window.PictureInPictureHandler === "undefined") {
             transition: opacity 0.2s ease, transform 0.1s ease;
         `;
 
-      // iframe を作成
-      const iframe = document.createElement("iframe");
-      iframe.style.cssText = `
-            width: 100%;
-            height: calc(100% - 35px);
-            border: none;
-            margin-top: 35px;
-            transform: scale(0.5);
-            transform-origin: top left;
-            border-radius: 0 0 12px 12px;
-        `;
-
       // ボタンのホバー効果
       [minimizeButton, maximizeButton, closeButton].forEach((button) => {
         button.addEventListener("mouseenter", () => {
@@ -1217,6 +1432,17 @@ if (typeof window.PictureInPictureHandler === "undefined") {
       });
 
       // 現在のページの縮小版を iframe に設定
+      const iframe = document.createElement("iframe");
+      iframe.style.cssText = `
+            width: 100%;
+            height: calc(100% - 35px);
+            border: none;
+            margin-top: 35px;
+            transform: scale(0.5);
+            transform-origin: top left;
+            border-radius: 0 0 12px 12px;
+        `;
+
       iframe.src = window.location.href;
 
       // 要素を組み立て
@@ -1364,43 +1590,6 @@ if (typeof window.PictureInPictureHandler === "undefined") {
             transition: opacity 0.2s ease, transform 0.1s ease;
         `;
 
-      // スクリーンショット的な表示を作成
-      const canvas = document.createElement("canvas");
-      const ctx = canvas.getContext("2d");
-      canvas.style.cssText = `
-            width: 100%;
-            height: calc(100% - 35px);
-            margin-top: 35px;
-            object-fit: contain;
-            border-radius: 0 0 12px 12px;
-            background: #fafafa;
-        `;
-
-      // 簡易的なページキャプチャ (html2canvasの代替)
-      canvas.width = window.innerWidth;
-      canvas.height = window.innerHeight;
-
-      // 背景を描画
-      ctx.fillStyle =
-        window.getComputedStyle(document.body).backgroundColor || "#ffffff";
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-      // テキストでページ内容を表示（簡易版）
-      ctx.fillStyle = "#333333";
-      ctx.font = "16px Arial";
-      ctx.fillText("📄 " + (document.title || "Untitled Page"), 20, 50);
-      ctx.font = "12px Arial";
-      ctx.fillText("URL: " + window.location.href, 20, 80);
-
-      // ページの主要テキストを抽出して描画
-      const textContent = document.body.innerText.substring(0, 500);
-      const lines = textContent.split("\n").slice(0, 15);
-      lines.forEach((line, index) => {
-        if (line.trim()) {
-          ctx.fillText(line.substring(0, 50), 20, 110 + index * 20);
-        }
-      });
-
       // ボタンのホバー効果
       [minimizeButton, maximizeButton, closeButton].forEach((button) => {
         button.addEventListener("mouseenter", () => {
@@ -1470,7 +1659,7 @@ if (typeof window.PictureInPictureHandler === "undefined") {
 
       // 要素を組み立て
       pipContainer.appendChild(headerBar);
-      pipContainer.appendChild(canvas);
+      pipContainer.appendChild(captureArea);
       document.body.appendChild(pipContainer);
 
       console.log("✅ スクリーンショットPiPウィンドウが作成されました");
@@ -1487,28 +1676,35 @@ if (typeof window.PictureInPictureHandler === "undefined") {
       console.log(`現在のサイト: ${currentDomain}`);
       console.log(`動画配信サイト判定: ${isVideoStreamingSite ? "YES" : "NO"}`);
 
-      // 1. まず通常のVideo要素でPiPを試行
-      const normalVideo = this.tryNormalVideoPiP();
+      // 1. サイト固有の強化された動画検出を試行
+      const siteSpecificVideo = this.tryStreamingSiteSpecificPiP(currentDomain);
+      if (siteSpecificVideo) {
+        console.log("✅ サイト固有動画検出でPiP成功");
+        return siteSpecificVideo;
+      }
+
+      // 2. 強化されたカスタムプレイヤーの検出
+      const customPlayer = this.tryEnhancedCustomPlayerPiP();
+      if (customPlayer) {
+        console.log("✅ 強化カスタムプレイヤーでPiP成功");
+        return customPlayer;
+      }
+
+      // 3. 通常のVideo要素でPiPを試行（改良版）
+      const normalVideo = this.tryEnhancedNormalVideoPiP();
       if (normalVideo) {
-        console.log("✅ 通常のVideo要素でPiP成功");
+        console.log("✅ 強化通常Video要素でPiP成功");
         return normalVideo;
       }
 
-      // 2. iframe内動画の検出とPiP
+      // 4. iframe内動画の検出とPiP
       const iframeVideo = this.tryIframeVideoPiP();
       if (iframeVideo) {
         console.log("✅ iframe内Video要素でPiP成功");
         return iframeVideo;
       }
 
-      // 3. カスタムプレイヤーの検出
-      const customPlayer = this.tryCustomPlayerPiP();
-      if (customPlayer) {
-        console.log("✅ カスタムプレイヤーでPiP成功");
-        return customPlayer;
-      }
-
-      // 4. フレームキャプチャによる疑似PiP
+      // 5. フレームキャプチャによる疑似PiP
       const frameCapture = this.tryFrameCapturePiP();
       if (frameCapture) {
         console.log("✅ フレームキャプチャによる疑似PiP成功");
@@ -1517,7 +1713,7 @@ if (typeof window.PictureInPictureHandler === "undefined") {
 
       console.log("❌ すべてのPiP手法が失敗しました");
 
-      // 5. 最後の手段：動画領域を自動検出してキャプチャ
+      // 6. 最後の手段：動画領域を自動検出してキャプチャ
       return this.tryVideoAreaCapture();
     }
 
@@ -1545,42 +1741,436 @@ if (typeof window.PictureInPictureHandler === "undefined") {
       return streamingSites.some((site) => domain.includes(site));
     }
 
-    // 通常のVideo要素でPiPを試行
-    tryNormalVideoPiP() {
-      console.log("🎬 通常のVideo要素でPiP試行中...");
+    // ストリーミングサイト固有の動画検出
+    tryStreamingSiteSpecificPiP(domain) {
+      console.log("🎯 サイト固有の動画検出を開始:", domain);
 
-      const videos = Array.from(document.querySelectorAll("video"));
-      console.log(`発見された動画要素: ${videos.length}個`);
+      let selectors = [];
+      let waitForLoad = false;
+      let maxWaitTime = 5000; // 5秒
 
-      for (let video of videos) {
+      if (domain.includes("youtube.com") || domain.includes("youtu.be")) {
+        console.log("🔴 YouTube特化検出を実行");
+        selectors = [
+          "ytd-app video",
+          'video[src*="googlevideo"]',
+          ".ytp-video-container video",
+          "#movie_player video",
+          ".html5-video-player video",
+          "video.video-stream",
+          'video[class*="video"]',
+          ".ytp-html5-video",
+          "video[autoplay]",
+          'video:not([width="0"]):not([height="0"])',
+          "ytd-player video",
+          ".ytd-player-container video",
+          "video[poster]",
+          "video[controls]",
+          "video[preload]",
+          ".player-container video",
+          "video.html5-main-video",
+          'div[id*="player"] video',
+        ];
+        waitForLoad = true;
+        maxWaitTime = 8000; // YouTubeは読み込みが遅い場合があるので延長
+      } else if (domain.includes("tver.jp")) {
+        console.log("📺 TVar特化検出を実行");
+        selectors = [
+          ".tver-player video",
+          "div[class*='Player'] video",
+          ".media-player video",
+          "video[class*='player']",
+          ".video-container video",
+          "video.tver-video",
+          ".player-wrapper video",
+          "video[autoplay]",
+          "video:not([width='0']):not([height='0'])",
+          ".video-js video",
+          "video[poster]",
+          "video[controls]",
+          "video[preload]",
+          "div[id*='player'] video",
+          ".jwplayer video",
+          "video.jw-video",
+          "video[data-*]",
+        ];
+        waitForLoad = true;
+        maxWaitTime = 10000; // TVerも読み込みが遅い場合があるので延長
+      } else if (domain.includes("abema.tv")) {
+        console.log("🌟 ABEMA特化検出を実行");
+        selectors = [
+          ".com-vod-VODPlayer video",
+          ".com-tv-TVPlayer video",
+          "video[src*='abema']",
+          ".abema-player video",
+          ".video-player video",
+        ];
+        waitForLoad = true;
+      } else if (domain.includes("netflix.com")) {
+        console.log("🎬 Netflix特化検出を実行");
+        selectors = [
+          ".VideoContainer video",
+          ".NFPlayer video",
+          "video[src*='netflix']",
+          "video[src*='nflx']",
+          ".watch-video video",
+        ];
+        waitForLoad = true;
+      } else if (domain.includes("twitch.tv")) {
+        console.log("🟣 Twitch特化検出を実行");
+        selectors = [
+          ".video-player video",
+          ".player-video video",
+          "video[src*='twitch']",
+          ".tw-video video",
+        ];
+        waitForLoad = true;
+      }
+
+      return this.findVideoWithSelectors(selectors, waitForLoad, maxWaitTime);
+    }
+
+    // セレクターを使用して動画を検索（待機機能付き）
+    async findVideoWithSelectors(
+      selectors,
+      waitForLoad = false,
+      maxWaitTime = 5000
+    ) {
+      console.log("🔍 セレクターによる動画検索開始:", selectors);
+
+      const findVideo = () => {
+        for (let selector of selectors) {
+          try {
+            const videos = Array.from(document.querySelectorAll(selector));
+            console.log(
+              `セレクター "${selector}" で ${videos.length} 個の要素を発見`
+            );
+
+            for (let video of videos) {
+              if (!video || video.tagName !== "VIDEO") continue;
+
+              const rect = video.getBoundingClientRect();
+              console.log(`動画要素チェック:`, {
+                selector: selector,
+                src: video.src || video.currentSrc,
+                width: rect.width,
+                height: rect.height,
+                readyState: video.readyState,
+                paused: video.paused,
+              });
+
+              // サイズチェック（より柔軟に）
+              if (rect.width >= 200 && rect.height >= 100) {
+                // 準備状態をチェック（より柔軟に）
+                if (video.readyState >= 1) {
+                  // HAVE_METADATA以上
+                  console.log("✅ 適切な動画要素を発見:", selector);
+
+                  // disablepictureinpicture属性を強制削除
+                  this.forceRemoveDisablePiP(video);
+
+                  // フローティングウィンドウを作成
+                  this.createForceVideoFloatingWindow(video);
+                  return video;
+                }
+              }
+            }
+          } catch (error) {
+            console.log(`セレクター "${selector}" でエラー:`, error);
+          }
+        }
+        return null;
+      };
+
+      // 即座に検索を試行
+      let result = findVideo();
+      if (result) return result;
+
+      // 待機が必要な場合は、動画の読み込みを待つ
+      if (waitForLoad) {
+        console.log(
+          "⏳ 動画の読み込みを待機中... (最大 " + maxWaitTime / 1000 + " 秒)"
+        );
+
+        const startTime = Date.now();
+        const checkInterval = 500; // 500msごとにチェック
+
+        return new Promise((resolve) => {
+          const intervalId = setInterval(() => {
+            const currentTime = Date.now();
+
+            if (currentTime - startTime > maxWaitTime) {
+              console.log("⏰ 動画検索のタイムアウト");
+              clearInterval(intervalId);
+              resolve(null);
+              return;
+            }
+
+            const video = findVideo();
+            if (video) {
+              console.log("✅ 待機後に動画要素を発見");
+              clearInterval(intervalId);
+              resolve(video);
+            }
+          }, checkInterval);
+        });
+      }
+
+      return null;
+    }
+
+    // 動画要素の品質を評価する関数
+    evaluateVideoQuality(video) {
+      if (!video || video.tagName !== "VIDEO") return -1;
+
+      let score = 0;
+      const rect = video.getBoundingClientRect();
+
+      // サイズによるスコア（大きいほど良い）
+      const area = rect.width * rect.height;
+      if (area > 500000) score += 10; // 大型動画
+      else if (area > 200000) score += 7; // 中型動画
+      else if (area > 50000) score += 4; // 小型動画
+      else if (area > 10000) score += 2; // 最小限動画
+      else return -1; // 小さすぎる
+
+      // readyStateによるスコア
+      if (video.readyState >= 3) score += 5; // 充分なデータ
+      else if (video.readyState >= 2) score += 3; // 現在のフレーム
+      else if (video.readyState >= 1) score += 1; // メタデータ
+      else return -1; // データ不足
+
+      // 再生状態によるスコア
+      if (!video.paused) score += 3; // 再生中
+      if (video.currentTime > 0) score += 2; // 開始済み
+      if (video.duration > 0) score += 1; // 持続時間あり
+
+      // ソースの存在によるスコア
+      if (video.src || video.currentSrc) score += 2;
+
+      // 可視性によるスコア
+      const style = window.getComputedStyle(video);
+      if (style.display !== "none" && style.visibility !== "hidden") {
+        score += 2;
+      }
+      if (style.opacity !== "0") score += 1;
+
+      // 特定の属性による減点
+      if (video.hasAttribute("disablepictureinpicture")) score -= 1;
+      if (video.muted) score -= 1;
+
+      // サイト固有のボーナス
+      const domain = window.location.hostname.toLowerCase();
+      if (domain.includes("youtube.com") || domain.includes("youtu.be")) {
+        if (
+          video.classList.contains("video-stream") ||
+          video.classList.contains("html5-main-video")
+        ) {
+          score += 5; // YouTube特化ボーナス
+        }
+      } else if (domain.includes("tver.jp")) {
+        if (video.closest(".player") || video.closest(".video-player")) {
+          score += 5; // TVar特化ボーナス
+        }
+      }
+
+      console.log(
+        `動画品質評価: スコア${score}, サイズ${rect.width}x${rect.height}, readyState${video.readyState}`
+      );
+      return score;
+    }
+
+    // 強化されたカスタムプレイヤーの検出
+    tryEnhancedCustomPlayerPiP() {
+      console.log("🎛️ 強化カスタムプレイヤーの検出中...");
+
+      // より包括的なセレクター
+      const enhancedSelectors = [
+        // YouTube特有（更新）
+        "ytd-app video",
+        'video[src*="googlevideo"]',
+        ".ytp-video-container video",
+        "#movie_player video",
+        ".html5-video-player video",
+        "video.video-stream",
+        'video[class*="video"]',
+        ".ytp-html5-video",
+        "video[autoplay]",
+        'video:not([width="0"]):not([height="0"])',
+        "ytd-player video",
+        ".ytd-player-container video",
+        "video[poster]",
+        "video[controls]",
+        "video[preload]",
+        ".player-container video",
+        "video.html5-main-video",
+        'div[id*="player"] video',
+
+        // TVar / TVer特有（強化）
+        ".tver-player video",
+        "div[class*='Player'] video",
+        ".media-player video",
+        "video[class*='player']",
+        ".video-container video",
+        "video.tver-video",
+        ".player-wrapper video",
+        "video[autoplay]",
+        "video:not([width='0']):not([height='0'])",
+        ".video-js video",
+        "video[poster]",
+        "video[controls]",
+        "video[preload]",
+        "div[id*='player'] video",
+        ".jwplayer video",
+        "video.jw-video",
+        "video[data-*]",
+
+        // 一般的なプレイヤー（強化）
+        "[data-player] video",
+        "[id*='player'] video",
+        "[class*='player'] video",
+        "[class*='Player'] video",
+        "[data-video] video",
+        ".video video",
+
+        // HTML5プレイヤー
+        ".html5-player video",
+        ".html5-video video",
+        ".vjs-tech video",
+        ".video-js .vjs-tech",
+
+        // カスタムプレイヤー
+        ".plyr video",
+        ".mediaelement video",
+        ".jwplayer .jwvideo",
+
+        // 埋め込みプレイヤー
+        "[data-embed] video",
+        "[class*='embed'] video",
+      ];
+
+      return this.findAndCreatePiPFromSelectors(
+        enhancedSelectors,
+        "強化カスタムプレイヤー"
+      );
+    }
+
+    // 強化された通常Video要素の検出
+    tryEnhancedNormalVideoPiP() {
+      console.log("📺 強化通常Video要素の検出中...");
+
+      const allVideos = Array.from(document.querySelectorAll("video"));
+      console.log(`発見された動画要素: ${allVideos.length}個`);
+
+      if (allVideos.length === 0) return null;
+
+      // 優先度を使って動画をソート
+      const sortedVideos = allVideos
+        .map((video) => ({
+          element: video,
+          score: this.evaluateVideoQuality(video),
+        }))
+        .filter((item) => item.score > 0)
+        .sort((a, b) => b.score - a.score);
+
+      console.log(
+        "動画要素の評価結果:",
+        sortedVideos.map((item) => ({
+          score: item.score,
+          src: item.element.src || item.element.currentSrc,
+          size: `${item.element.getBoundingClientRect().width}x${
+            item.element.getBoundingClientRect().height
+          }`,
+        }))
+      );
+
+      for (let item of sortedVideos) {
+        const video = item.element;
         try {
-          // disablepictureinpicture属性を強制削除
+          console.log(
+            `動画処理中 (スコア: ${item.score}):`,
+            video.src || video.currentSrc
+          );
+
           this.forceRemoveDisablePiP(video);
 
-          // サイズと表示状態をチェック
           const rect = video.getBoundingClientRect();
-          if (rect.width < 100 || rect.height < 50) {
-            console.log("動画サイズが小さすぎるためスキップ");
+          if (rect.width < 150 || rect.height < 100) {
+            console.log(
+              "動画サイズが小さすぎます:",
+              rect.width,
+              "x",
+              rect.height
+            );
             continue;
           }
 
-          if (video.readyState < 2) {
-            console.log("動画の準備ができていないためスキップ");
-            continue;
-          }
+          console.log(
+            "✅ 適切な動画要素を発見、PiP作成中:",
+            video.src || video.currentSrc
+          );
 
-          // PiPを試行
-          console.log("PiP試行中:", video.src || video.currentSrc);
-
-          // 既存のフローティングウィンドウを作成
+          // フローティングウィンドウを作成
           this.createForceVideoFloatingWindow(video);
           return video;
         } catch (error) {
-          console.log(`動画 ${video.src} でPiP失敗:`, error);
+          console.log(`動画要素処理エラー:`, error);
           continue;
         }
       }
 
+      console.log("❌ 強化通常Video要素検出で適切な動画が見つかりませんでした");
+      return null;
+    }
+
+    // セレクターからPiPを作成するヘルパー関数
+    findAndCreatePiPFromSelectors(selectors, context = "検出") {
+      let bestVideo = null;
+      let bestScore = -1;
+
+      for (let selector of selectors) {
+        try {
+          const videos = Array.from(document.querySelectorAll(selector));
+          console.log(
+            `${context} - セレクター "${selector}": ${videos.length}個の要素`
+          );
+
+          for (let video of videos) {
+            if (!video || video.tagName !== "VIDEO") continue;
+
+            this.forceRemoveDisablePiP(video);
+
+            // 動画品質を評価
+            const score = this.evaluateVideoQuality(video);
+            if (score > bestScore) {
+              bestScore = score;
+              bestVideo = video;
+            }
+
+            const rect = video.getBoundingClientRect();
+            console.log(`${context} - 動画チェック (${selector}):`, {
+              width: rect.width,
+              height: rect.height,
+              readyState: video.readyState,
+              score: score,
+              src: video.src || video.currentSrc,
+            });
+          }
+        } catch (error) {
+          console.log(`${context} - セレクター "${selector}" でエラー:`, error);
+        }
+      }
+
+      if (bestVideo && bestScore > 0) {
+        console.log(
+          `✅ ${context}で最良の動画発見 (スコア: ${bestScore}):`,
+          bestVideo.src || bestVideo.currentSrc
+        );
+        this.createForceVideoFloatingWindow(bestVideo);
+        return bestVideo;
+      }
+
+      console.log(`❌ ${context}で適切な動画が見つかりませんでした`);
       return null;
     }
 
@@ -1593,258 +2183,120 @@ if (typeof window.PictureInPictureHandler === "undefined") {
 
       for (let iframe of iframes) {
         try {
-          // 同一オリジンのiframeのみ処理
-          if (iframe.contentDocument) {
-            const iframeVideos = Array.from(
-              iframe.contentDocument.querySelectorAll("video")
-            );
-
-            for (let video of iframeVideos) {
-              this.forceRemoveDisablePiP(video);
-
-              const rect = video.getBoundingClientRect();
-              if (
-                rect.width >= 100 &&
-                rect.height >= 50 &&
-                video.readyState >= 2
-              ) {
-                console.log("iframe内動画でPiP試行:", video.src);
-                this.createForceVideoFloatingWindow(video);
-                return video;
-              }
-            }
+          const iframeDoc =
+            iframe.contentDocument || iframe.contentWindow.document;
+          if (!iframeDoc) {
+            console.log("iframe内容にアクセスできません (CORS制限の可能性)");
+            continue;
           }
-        } catch (error) {
-          console.log("iframe動画アクセスエラー (CORS制限の可能性):", error);
-        }
-      }
 
-      return null;
-    }
-
-    // カスタムプレイヤーの検出
-    tryCustomPlayerPiP() {
-      console.log("🎛️ カスタムプレイヤーの検出中...");
-
-      // YouTube特有のプレイヤー検出
-      const youtubeSelectors = [
-        ".html5-video-player video",
-        "#movie_player video",
-        ".ytp-html5-video",
-        ".video-stream",
-      ];
-
-      // TVerなど他のサイトの一般的なセレクター
-      const generalSelectors = [
-        "[data-player] video",
-        ".player video",
-        ".video-player video",
-        ".jwplayer video",
-        ".flowplayer video",
-        ".video-container video",
-        ".player-container video",
-      ];
-
-      const allSelectors = [...youtubeSelectors, ...generalSelectors];
-
-      for (let selector of allSelectors) {
-        try {
-          const videos = Array.from(document.querySelectorAll(selector));
+          const videos = Array.from(iframeDoc.querySelectorAll("video"));
+          console.log(`iframe内動画: ${videos.length}個`);
 
           for (let video of videos) {
-            if (!video || video.tagName !== "VIDEO") continue;
-
             this.forceRemoveDisablePiP(video);
 
             const rect = video.getBoundingClientRect();
             if (
-              rect.width >= 100 &&
-              rect.height >= 50 &&
+              rect.width >= 200 &&
+              rect.height >= 150 &&
               video.readyState >= 2
             ) {
               console.log(
-                `カスタムプレイヤー動画発見 (${selector}):`,
-                video.src
+                "✅ iframe内動画でPiP作成:",
+                video.src || video.currentSrc
               );
               this.createForceVideoFloatingWindow(video);
               return video;
             }
           }
         } catch (error) {
-          console.log(`セレクター ${selector} でエラー:`, error);
+          console.log("iframe処理エラー:", error);
         }
       }
 
+      console.log("❌ iframe内で適切な動画が見つかりませんでした");
       return null;
     }
 
-    // フレームキャプチャによる疑似PiP
+    // フレームキャプチャによる疑似PiP（強化版）
     tryFrameCapturePiP() {
-      console.log("📸 フレームキャプチャによる疑似PiP試行中...");
+      console.log("📸 フレームキャプチャによる疑似PiP開始...");
 
-      const videos = Array.from(document.querySelectorAll("video"));
+      const allVideos = Array.from(document.querySelectorAll("video"));
+      console.log(`フレームキャプチャ対象動画: ${allVideos.length}個`);
 
-      for (let video of videos) {
+      if (allVideos.length === 0) return null;
+
+      // 優先度でソート
+      const sortedVideos = allVideos
+        .map((video) => ({
+          element: video,
+          score: this.evaluateVideoQuality(video),
+        }))
+        .filter((item) => item.score >= 0) // スコア0以上のものを対象
+        .sort((a, b) => b.score - a.score);
+
+      for (let item of sortedVideos) {
+        const video = item.element;
         try {
-          if (video.readyState < 2) continue;
-
           const rect = video.getBoundingClientRect();
-          if (rect.width < 100 || rect.height < 50) continue;
 
-          // キャンバスでフレームをキャプチャ
-          const canvas = document.createElement("canvas");
-          const ctx = canvas.getContext("2d");
+          // readyStateチェックを緩和
+          if (
+            video.readyState >= 1 &&
+            rect.width >= 100 &&
+            rect.height >= 100
+          ) {
+            console.log(
+              `フレームキャプチャ実行: ${video.src || video.currentSrc}`
+            );
 
-          canvas.width = Math.min(video.videoWidth || rect.width, 800);
-          canvas.height = Math.min(video.videoHeight || rect.height, 600);
+            const canvas = document.createElement("canvas");
+            const ctx = canvas.getContext("2d");
 
-          // フレームを描画
-          ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            canvas.width = rect.width;
+            canvas.height = rect.height;
 
-          // Base64データを取得
-          const frameData = canvas.toDataURL("image/png");
+            try {
+              ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-          if (frameData && frameData.length > 1000) {
-            console.log("フレームキャプチャ成功、疑似PiPウィンドウを作成");
-            this.createFrameCapturePiPWindow(video, frameData);
-            return { type: "frame-capture", video: video, data: frameData };
-          }
-        } catch (error) {
-          console.log("フレームキャプチャエラー:", error);
-        }
-      }
+              console.log("✅ フレームキャプチャ成功");
+              this.createFrameCapturePiPWindow(video, canvas, ctx);
 
-      return null;
-    }
+              // 自動フレーム更新を開始
+              this.startFrameUpdateInterval(video, canvas, ctx);
 
-    // 動画領域を自動検出してキャプチャ
-    tryVideoAreaCapture() {
-      console.log("🔍 動画領域の自動検出中...");
-
-      // 動画っぽい領域を検出する要素
-      const videoLikeSelectors = [
-        ".video-container",
-        ".player-container",
-        ".movie-container",
-        '[class*="video"]',
-        '[id*="video"]',
-        '[class*="player"]',
-        '[id*="player"]',
-        ".jwplayer",
-        ".flowplayer",
-      ];
-
-      for (let selector of videoLikeSelectors) {
-        try {
-          const elements = Array.from(document.querySelectorAll(selector));
-
-          for (let element of elements) {
-            const rect = element.getBoundingClientRect();
-
-            // 動画っぽいサイズ比率をチェック
-            const aspectRatio = rect.width / rect.height;
-            if (
-              aspectRatio >= 1.3 &&
-              aspectRatio <= 2.5 &&
-              rect.width >= 300 &&
-              rect.height >= 200
-            ) {
-              console.log(`動画領域候補発見: ${selector}`, rect);
-
-              // この領域をキャプチャしてPiPウィンドウを作成
-              this.createAreaCapturePiPWindow(element);
-              return { type: "area-capture", element: element };
+              return video;
+            } catch (drawError) {
+              console.log("フレーム描画エラー:", drawError);
+              continue;
             }
           }
         } catch (error) {
-          console.log(`動画領域検出エラー (${selector}):`, error);
+          console.log("フレームキャプチャエラー:", error);
+          continue;
         }
       }
 
-      // 最後の手段：画面全体をキャプチャ
-      console.log("🖥️ 画面全体キャプチャによる疑似PiP");
-      this.createScreenCapturePiPWindow();
-      return { type: "screen-capture" };
+      console.log("❌ フレームキャプチャできる動画が見つかりませんでした");
+      return null;
     }
 
-    // disablepictureinpicture属性を強制削除
-    forceRemoveDisablePiP(video) {
-      if (!video || video.tagName !== "VIDEO") return;
-
-      try {
-        // 各種属性を削除
-        const disableAttrs = [
-          "disablepictureinpicture",
-          "disablePictureInPicture",
-          "disable-picture-in-picture",
-          "data-disable-pip",
-          "data-no-pip",
-        ];
-
-        disableAttrs.forEach((attr) => {
-          if (video.hasAttribute(attr)) {
-            video.removeAttribute(attr);
-            console.log(`削除した属性: ${attr}`);
-          }
-        });
-
-        // プロパティを強制的にfalseに設定
-        try {
-          Object.defineProperty(video, "disablePictureInPicture", {
-            value: false,
-            writable: false,
-            configurable: true,
-          });
-        } catch (e) {
-          video.disablePictureInPicture = false;
-        }
-
-        // 属性設定を監視してブロック
-        const originalSetAttribute = video.setAttribute;
-        video.setAttribute = function (name, value) {
-          if (
-            name &&
-            name.toLowerCase().includes("disable") &&
-            name.toLowerCase().includes("picture")
-          ) {
-            console.log(`ブロックした属性設定: ${name}=${value}`);
-            return;
-          }
-          return originalSetAttribute.call(this, name, value);
-        };
-
-        // 属性削除を防止
-        const originalRemoveAttribute = video.removeAttribute;
-        video.removeAttribute = function (name) {
-          if (
-            name &&
-            name.toLowerCase().includes("disable") &&
-            name.toLowerCase().includes("picture")
-          ) {
-            console.log(`属性削除を防止: ${name}`);
-            return;
-          }
-          return originalRemoveAttribute.call(this, name);
-        };
-      } catch (error) {
-        console.log("disablePiP削除エラー:", error);
-      }
-    }
-
-    // 強制動画フローティングウィンドウ作成
-    createForceVideoFloatingWindow(video) {
-      console.log("🎬 強制動画フローティングウィンドウを作成中...");
+    // フレームキャプチャPiPウィンドウを作成
+    createFrameCapturePiPWindow(video, canvas, ctx) {
+      console.log("🖼️ フレームキャプチャPiPウィンドウを作成中...");
 
       // 既存のPiPウィンドウを削除
-      const existingPiP = document.getElementById("force-video-pip-window");
+      const existingPiP = document.getElementById("frame-capture-pip-window");
       if (existingPiP) {
         existingPiP.remove();
       }
 
       // フローティングコンテナを作成
       const pipContainer = document.createElement("div");
-      pipContainer.id = "force-video-pip-window";
-      pipContainer.className = "force-video-pip-window";
+      pipContainer.id = "frame-capture-pip-window";
+      pipContainer.className = "frame-capture-pip-window";
 
       const rect = video.getBoundingClientRect();
       const pipWidth = Math.min(400, rect.width);
@@ -1876,14 +2328,13 @@ if (typeof window.PictureInPictureHandler === "undefined") {
         top: 0;
         left: 0;
         right: 0;
-        height: 35px;
-        background: linear-gradient(135deg, #007ACC 0%, #0096FF 100%);
+        height: 25px;
+        background: linear-gradient(135deg, #007ACC 0%, #005a9e 100%);
         display: flex;
         align-items: center;
-        padding: 0 12px;
+        padding: 0 8px;
         font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-        font-size: 12px;
-        font-weight: 500;
+        font-size: 11px;
         color: white;
         cursor: move;
         user-select: none;
@@ -1891,20 +2342,9 @@ if (typeof window.PictureInPictureHandler === "undefined") {
       `;
 
       const headerTitle = document.createElement("div");
-      headerTitle.style.cssText = `
-        flex: 1;
-        font-size: 12px;
-        font-weight: 600;
-        opacity: 0.95;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-      `;
-      headerTitle.textContent = `🎬 強制PiP - ${
-        document.title || window.location.hostname
-      }`;
+      headerTitle.style.cssText = `flex: 1; font-weight: 600;`;
+      headerTitle.textContent = "📸 フレームキャプチャ";
 
-      // 閉じるボタン
       const closeButton = document.createElement("button");
       closeButton.innerHTML = "×";
       closeButton.style.cssText = `
@@ -1919,229 +2359,147 @@ if (typeof window.PictureInPictureHandler === "undefined") {
         display: flex;
         align-items: center;
         justify-content: center;
-        transition: background 0.2s ease;
       `;
 
-      closeButton.onclick = (e) => {
-        e.stopPropagation();
-        pipContainer.style.transition =
-          "transform 0.2s ease, opacity 0.2s ease";
-        pipContainer.style.transform = "scale(0.8)";
-        pipContainer.style.opacity = "0";
-        setTimeout(() => {
-          pipContainer.remove();
-          console.log("🔚 強制PiPウィンドウを閉じました");
-        }, 200);
+      closeButton.onclick = () => {
+        pipContainer.remove();
+        console.log("🔚 フレームキャプチャPiPウィンドウを閉じました");
       };
 
-      // 動画クローンを作成
-      const videoClone = video.cloneNode(true);
-      videoClone.style.cssText = `
+      // キャンバスのスタイル設定
+      canvas.style.cssText = `
         width: 100%;
-        height: calc(100% - 35px);
-        margin-top: 35px;
+        height: calc(100% - 25px);
+        margin-top: 25px;
         object-fit: contain;
         border-radius: 0 0 10px 10px;
       `;
 
-      // 元の動画と同期
-      videoClone.currentTime = video.currentTime;
-      if (!video.paused) {
-        videoClone.play().catch((e) => console.log("動画再生エラー:", e));
-      }
-
-      // 元の動画の再生状態を監視
-      const syncVideo = () => {
-        if (Math.abs(videoClone.currentTime - video.currentTime) > 1) {
-          videoClone.currentTime = video.currentTime;
-        }
-
-        if (video.paused && !videoClone.paused) {
-          videoClone.pause();
-        } else if (!video.paused && videoClone.paused) {
-          videoClone.play().catch((e) => console.log("同期再生エラー:", e));
-        }
-      };
-
-      // 定期的に同期
-      const syncInterval = setInterval(syncVideo, 1000);
-
-      // クリーンアップ
-      pipContainer.addEventListener("remove", () => {
-        clearInterval(syncInterval);
-      });
-
-      // 要素を組み立て
-      headerBar.appendChild(headerTitle);
-      headerBar.appendChild(closeButton);
-      pipContainer.appendChild(headerBar);
-      pipContainer.appendChild(videoClone);
-
       // ドラッグ機能を追加
       this.addDragFunctionality(pipContainer, headerBar);
 
-      // DOMに追加
-      document.body.appendChild(pipContainer);
-
-      console.log("✅ 強制動画フローティングウィンドウが作成されました");
-      return pipContainer;
-    }
-
-    // フレームキャプチャPiPウィンドウ作成
-    createFrameCapturePiPWindow(video, frameData) {
-      console.log("📸 フレームキャプチャPiPウィンドウを作成中...");
-
-      const existingPiP = document.getElementById("frame-capture-pip-window");
-      if (existingPiP) {
-        existingPiP.remove();
-      }
-
-      const pipContainer = document.createElement("div");
-      pipContainer.id = "frame-capture-pip-window";
-      pipContainer.className = "frame-capture-pip-window";
-
-      pipContainer.style.cssText = `
-        position: fixed;
-        top: 50px;
-        right: 50px;
-        width: 400px;
-        height: 300px;
-        background: #fff;
-        border: 2px solid #FF6B6B;
-        border-radius: 12px;
-        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
-        z-index: 999999;
-        overflow: hidden;
-        resize: both;
-        min-width: 200px;
-        min-height: 150px;
-      `;
-
-      // ヘッダー
-      const headerBar = document.createElement("div");
-      headerBar.style.cssText = `
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        height: 35px;
-        background: linear-gradient(135deg, #FF6B6B 0%, #FF8E53 100%);
-        display: flex;
-        align-items: center;
-        padding: 0 12px;
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-        font-size: 12px;
-        color: white;
-        cursor: move;
-      `;
-
-      const headerTitle = document.createElement("div");
-      headerTitle.style.flex = "1";
-      headerTitle.textContent =
-        "📸 フレームキャプチャ - " + (document.title || "Video");
-
-      const closeButton = document.createElement("button");
-      closeButton.innerHTML = "×";
-      closeButton.style.cssText = `
-        width: 20px;
-        height: 20px;
-        border: none;
-        background: rgba(255, 255, 255, 0.2);
-        color: white;
-        border-radius: 50%;
-        cursor: pointer;
-      `;
-
-      closeButton.onclick = () => pipContainer.remove();
-
-      // キャプチャした画像を表示
-      const frameImage = document.createElement("img");
-      frameImage.src = frameData;
-      frameImage.style.cssText = `
-
-        width: 100%;
-        height: calc(100% - 35px);
-        margin-top: 35px;
-        object-fit: contain;
-      `;
-
-      // 更新ボタン
-      const updateButton = document.createElement("button");
-      updateButton.innerHTML = "🔄";
-      updateButton.style.cssText = `
-        position: absolute;
-        bottom: 10px;
-        right: 10px;
-        width: 40px;
-        height: 40px;
-        border: none;
-        background: rgba(0, 0, 0, 0.7);
-        color: white;
-        border-radius: 50%;
-        cursor: pointer;
-        font-size: 18px;
-      `;
-
-      updateButton.onclick = () => {
-        try {
-          const canvas = document.createElement("canvas");
-          const ctx = canvas.getContext("2d");
-          const rect = video.getBoundingClientRect();
-
-          canvas.width = video.videoWidth || rect.width;
-          canvas.height = video.videoHeight || rect.height;
-
-          ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-          frameImage.src = canvas.toDataURL("image/png");
-
-          console.log("フレームを更新しました");
-        } catch (error) {
-          console.log("フレーム更新エラー:", error);
-        }
-      };
-
       // 要素を組み立て
       headerBar.appendChild(headerTitle);
       headerBar.appendChild(closeButton);
       pipContainer.appendChild(headerBar);
-      pipContainer.appendChild(frameImage);
-      pipContainer.appendChild(updateButton);
-
-      this.addDragFunctionality(pipContainer, headerBar);
+      pipContainer.appendChild(canvas);
       document.body.appendChild(pipContainer);
-
-      // 自動更新（5秒間隔）
-      const autoUpdate = setInterval(() => {
-        updateButton.click();
-      }, 5000);
-
-      pipContainer.addEventListener("remove", () => {
-        clearInterval(autoUpdate);
-      });
 
       console.log("✅ フレームキャプチャPiPウィンドウが作成されました");
     }
 
-    // 領域キャプチャPiPウィンドウ作成
-    createAreaCapturePiPWindow(element) {
-      console.log("🔍 領域キャプチャPiPウィンドウを作成中...");
+    // フレーム更新インターバルを開始
+    startFrameUpdateInterval(video, canvas, ctx) {
+      console.log("🔄 フレーム自動更新を開始");
 
+      const updateInterval = setInterval(() => {
+        try {
+          if (!video || video.readyState < 1) {
+            console.log("動画が無効になったため更新停止");
+            clearInterval(updateInterval);
+            return;
+          }
+
+          // PiPウィンドウが存在するかチェック
+          const pipWindow = document.getElementById("frame-capture-pip-window");
+          if (!pipWindow) {
+            console.log("PiPウィンドウが閉じられたため更新停止");
+            clearInterval(updateInterval);
+            return;
+          }
+
+          // フレームを更新
+          ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        } catch (error) {
+          console.log("フレーム更新エラー:", error);
+        }
+      }, 1000); // 1秒間隔で更新
+
+      // 10分後に自動停止
+      setTimeout(() => {
+        clearInterval(updateInterval);
+        console.log("📸 フレーム更新を10分後に自動停止");
+      }, 10 * 60 * 1000);
+    }
+
+    // 動画領域自動検出キャプチャ
+    tryVideoAreaCapture() {
+      console.log("🎪 動画領域自動検出キャプチャを開始...");
+
+      // 動画らしい領域を検出するヒューリスティック
+      const videoLikeSelectors = [
+        "[id*='video']",
+        "[class*='video']",
+        "[id*='player']",
+        "[class*='player']",
+        "[data-video]",
+        "[data-player]",
+        "canvas",
+        "iframe[src*='youtube']",
+        "iframe[src*='vimeo']",
+        "iframe[src*='twitch']",
+        "div[style*='background-image']",
+      ];
+
+      for (let selector of videoLikeSelectors) {
+        const elements = Array.from(document.querySelectorAll(selector));
+        console.log(`セレクター "${selector}": ${elements.length}個の要素`);
+
+        for (let element of elements) {
+          const rect = element.getBoundingClientRect();
+          const area = rect.width * rect.height;
+
+          // 動画らしいサイズの要素を検出
+          if (area > 50000 && rect.width > 200 && rect.height > 150) {
+            console.log("動画らしい領域を発見:", {
+              element: element.tagName,
+              size: `${rect.width}x${rect.height}`,
+              area: area,
+            });
+
+            try {
+              this.createAreaCapturePiPWindow(element);
+              console.log("✅ 動画領域キャプチャPiP成功");
+              return element;
+            } catch (error) {
+              console.log("領域キャプチャエラー:", error);
+              continue;
+            }
+          }
+        }
+      }
+
+      console.log("❌ 動画領域自動検出に失敗しました");
+      return null;
+    }
+
+    // 領域キャプチャPiPウィンドウを作成
+    createAreaCapturePiPWindow(element) {
+      console.log("🎪 領域キャプチャPiPウィンドウを作成中...");
+
+      // 既存のPiPウィンドウを削除
       const existingPiP = document.getElementById("area-capture-pip-window");
       if (existingPiP) {
         existingPiP.remove();
       }
 
+      // フローティングコンテナを作成
       const pipContainer = document.createElement("div");
       pipContainer.id = "area-capture-pip-window";
+      pipContainer.className = "area-capture-pip-window";
+
+      const rect = element.getBoundingClientRect();
+      const pipWidth = Math.min(400, rect.width * 0.5);
+      const pipHeight = Math.min(300, rect.height * 0.5);
 
       pipContainer.style.cssText = `
         position: fixed;
-        top: 50px;
-        right: 50px;
-        width: 400px;
-        height: 300px;
-        background: #fff;
-        border: 2px solid #4CAF50;
+        top: 60px;
+        left: 60px;
+        width: ${pipWidth}px;
+        height: ${pipHeight}px;
+        background: #000;
+        border: 2px solid #FF6B35;
         border-radius: 12px;
         box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
         z-index: 999999;
@@ -2149,216 +2507,199 @@ if (typeof window.PictureInPictureHandler === "undefined") {
         resize: both;
         min-width: 200px;
         min-height: 150px;
+        backdrop-filter: blur(10px);
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
       `;
 
-      // 要素のクローンを作成
-      const elementClone = element.cloneNode(true);
-      elementClone.style.cssText = `
-        width: 100%;
-        height: calc(100% - 35px);
-        margin-top: 35px;
-        transform: scale(0.8);
-        transform-origin: top left;
-        border-radius: 0 0 10px 10px;
-        overflow: hidden;
-      `;
-
-      // ヘッダー
+      // ヘッダーバーを作成
       const headerBar = document.createElement("div");
       headerBar.style.cssText = `
         position: absolute;
         top: 0;
         left: 0;
         right: 0;
-        height: 35px;
-        background: linear-gradient(135deg, #4CAF50 0%, #66BB6A 100%);
+        height: 25px;
+        background: linear-gradient(135deg, #FF6B35 0%, #e55a2e 100%);
         display: flex;
         align-items: center;
-        padding: 0 12px;
+        padding: 0 8px;
         font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-        font-size: 12px;
+        font-size: 11px;
         color: white;
         cursor: move;
+        user-select: none;
+        border-radius: 10px 10px 0 0;
       `;
 
       const headerTitle = document.createElement("div");
-      headerTitle.style.flex = "1";
-      headerTitle.textContent =
-        "🔍 領域キャプチャ - " + (element.className || element.tagName);
+      headerTitle.style.cssText = `flex: 1; font-weight: 600;`;
+      headerTitle.textContent = "🎪 領域キャプチャ";
 
       const closeButton = document.createElement("button");
       closeButton.innerHTML = "×";
       closeButton.style.cssText = `
-        width: 20px;
-        height: 20px;
+        width: 18px;
+        height: 18px;
         border: none;
         background: rgba(255, 255, 255, 0.2);
         color: white;
         border-radius: 50%;
         cursor: pointer;
+        font-size: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
       `;
 
-      closeButton.onclick = () => pipContainer.remove();
+      closeButton.onclick = () => {
+        pipContainer.remove();
+        console.log("🔚 領域キャプチャPiPウィンドウを閉じました");
+      };
+
+      // 要素のクローンを作成
+      const elementClone = element.cloneNode(true);
+      elementClone.style.cssText = `
+        width: 100%;
+        height: calc(100% - 25px);
+        margin-top: 25px;
+        object-fit: contain;
+        border-radius: 0 0 10px 10px;
+        transform: scale(0.8);
+        transform-origin: top left;
+      `;
+
+      // ドラッグ機能を追加
+      this.addDragFunctionality(pipContainer, headerBar);
 
       // 要素を組み立て
       headerBar.appendChild(headerTitle);
       headerBar.appendChild(closeButton);
       pipContainer.appendChild(headerBar);
       pipContainer.appendChild(elementClone);
-
-      this.addDragFunctionality(pipContainer, headerBar);
       document.body.appendChild(pipContainer);
 
       console.log("✅ 領域キャプチャPiPウィンドウが作成されました");
     }
 
-    // 画面キャプチャPiPウィンドウ作成
-    createScreenCapturePiPWindow() {
-      console.log("🖥️ 画面キャプチャPiPウィンドウを作成中...");
+    // デバッグ情報表示
+    showPiPDebugInfo() {
+      console.log("🔍 PiP機能デバッグ情報:");
 
-      const existingPiP = document.getElementById("screen-capture-pip-window");
-      if (existingPiP) {
-        existingPiP.remove();
-      }
+      // 現在のサイト情報
+      const domain = window.location.hostname.toLowerCase();
+      const isStreamingSite = this.detectVideoStreamingSite(domain);
+      console.log("サイト情報:", {
+        domain: domain,
+        url: window.location.href,
+        isStreamingSite: isStreamingSite,
+        title: document.title,
+      });
 
-      const pipContainer = document.createElement("div");
-      pipContainer.id = "screen-capture-pip-window";
+      // 動画要素の状況
+      const allVideos = Array.from(document.querySelectorAll("video"));
+      console.log(`動画要素: ${allVideos.length}個発見`);
 
-      pipContainer.style.cssText = `
-        position: fixed;
-        top: 50px;
-        right: 50px;
-        width: 500px;
-        height: 400px;
-        background: #fff;
-        border: 2px solid #9C27B0;
-        border-radius: 12px;
-        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
-        z-index: 999999;
-        overflow: hidden;
-        resize: both;
-        min-width: 300px;
-        min-height: 200px;
-      `;
+      allVideos.forEach((video, index) => {
+        const rect = video.getBoundingClientRect();
+        const score = this.evaluateVideoQuality(video);
+        console.log(`動画 ${index + 1}:`, {
+          src: video.src || video.currentSrc || "ソースなし",
+          size: `${rect.width}x${rect.height}`,
+          readyState: video.readyState,
+          paused: video.paused,
+          currentTime: video.currentTime,
+          duration: video.duration,
+          disablePiP: video.hasAttribute("disablepictureinpicture"),
+          score: score,
+        });
+      });
 
-      // iframe で現在のページを表示
-      const iframe = document.createElement("iframe");
-      iframe.src = window.location.href;
-      iframe.style.cssText = `
-        width: 100%;
-        height: calc(100% - 35px);
-        margin-top: 35px;
-        border: none;
-        transform: scale(0.6);
-        transform-origin: top left;
-      `;
+      // アクティブなPiPウィンドウ
+      const pipWindows = document.querySelectorAll(
+        '[id*="pip"], [class*="pip"]'
+      );
+      console.log(`アクティブなPiPウィンドウ: ${pipWindows.length}個`);
 
-      // ヘッダー
-      const headerBar = document.createElement("div");
-      headerBar.style.cssText = `
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        height: 35px;
-        background: linear-gradient(135deg, #9C27B0 0%, #BA68C8 100%);
-        display: flex;
-        align-items: center;
-        padding: 0 12px;
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-        font-size: 12px;
-        color: white;
-        cursor: move;
-      `;
+      pipWindows.forEach((window, index) => {
+        console.log(`PiPウィンドウ ${index + 1}:`, {
+          id: window.id,
+          className: window.className,
+          size: `${window.offsetWidth}x${window.offsetHeight}`,
+          position: `${window.style.left}, ${window.style.top}`,
+        });
+      });
 
-      const headerTitle = document.createElement("div");
-      headerTitle.style.flex = "1";
-      headerTitle.textContent = "🖥️ 画面キャプチャ - " + document.title;
+      // ブラウザサポート状況
+      console.log("ブラウザサポート:", {
+        pictureInPictureEnabled: document.pictureInPictureEnabled,
+        requestPictureInPicture:
+          typeof HTMLVideoElement.prototype.requestPictureInPicture,
+        currentPiPElement: document.pictureInPictureElement ? "あり" : "なし",
+      });
 
-      const closeButton = document.createElement("button");
-      closeButton.innerHTML = "×";
-      closeButton.style.cssText = `
-        width: 20px;
-        height: 20px;
-        border: none;
-        background: rgba(255, 255, 255, 0.2);
-        color: white;
-        border-radius: 50%;
-        cursor: pointer;
-      `;
-
-      closeButton.onclick = () => pipContainer.remove();
-
-      // 要素を組み立て
-      headerBar.appendChild(headerTitle);
-      headerBar.appendChild(closeButton);
-      pipContainer.appendChild(headerBar);
-      pipContainer.appendChild(iframe);
-
-      this.addDragFunctionality(pipContainer, headerBar);
-      document.body.appendChild(pipContainer);
-
-      console.log("✅ 画面キャプチャPiPウィンドウが作成されました");
+      return {
+        domain,
+        isStreamingSite,
+        videoCount: allVideos.length,
+        pipWindowCount: pipWindows.length,
+        browserSupport: document.pictureInPictureEnabled,
+      };
     }
 
-    // グローバル関数のエクスポート
-    exportGlobalFunctions() {
-      // グローバル関数のエクスポート
-      window.forceVideoStreamingPiP = function () {
-        if (window.pipHandler) {
-          console.log("🎯 動画配信サイト向け強制PiP機能を実行中...");
-          return window.pipHandler.forceVideoStreamingPiP();
-        } else {
-          console.error("PictureInPictureHandler が初期化されていません");
-          return null;
+    // パフォーマンス監視
+    monitorPiPPerformance() {
+      console.log("📊 PiP機能パフォーマンス監視を開始");
+
+      const startTime = performance.now();
+      let operationCount = 0;
+
+      const originalLog = console.log;
+      console.log = function (...args) {
+        if (
+          args[0] &&
+          typeof args[0] === "string" &&
+          (args[0].includes("PiP") || args[0].includes("動画"))
+        ) {
+          operationCount++;
         }
+        return originalLog.apply(console, args);
       };
 
-      window.tryVideoAreaCapture = function () {
-        if (window.pipHandler) {
-          console.log("🎯 動画領域自動検出キャプチャを実行中...");
-          return window.pipHandler.tryVideoAreaCapture();
-        } else {
-          console.error("PictureInPictureHandler が初期化されていません");
-          return null;
-        }
-      };
+      // 5秒後に統計を表示
+      setTimeout(() => {
+        const endTime = performance.now();
+        const duration = endTime - startTime;
 
-      window.tryFrameCapturePiP = function () {
-        if (window.pipHandler) {
-          console.log("📸 フレームキャプチャPiPを実行中...");
-          return window.pipHandler.tryFrameCapturePiP();
-        } else {
-          console.error("PictureInPictureHandler が初期化されていません");
-          return null;
-        }
-      };
+        console.log = originalLog; // 元に戻す
 
-      window.createScreenCapturePiP = function () {
-        if (window.pipHandler) {
-          console.log("🖥️ 画面キャプチャPiPを実行中...");
-          return window.pipHandler.createScreenCapturePiPWindow();
-        } else {
-          console.error("PictureInPictureHandler が初期化されていません");
-          return null;
-        }
-      };
+        console.log("📈 PiPパフォーマンス統計:");
+        console.log(`- 監視時間: ${duration.toFixed(2)}ms`);
+        console.log(`- PiP関連操作: ${operationCount}回`);
+        console.log(
+          `- 平均操作頻度: ${(operationCount / (duration / 1000)).toFixed(
+            2
+          )}回/秒`
+        );
 
-      window.exitAllPiP = function () {
-        if (window.pipHandler) {
-          console.log("❌ 全PiPウィンドウを終了中...");
-          return window.pipHandler.exitAllPiP();
-        } else {
-          console.error("PictureInPictureHandler が初期化されていません");
+        // メモリ使用量（可能な場合）
+        if (performance.memory) {
+          console.log("- メモリ使用量:", {
+            used: `${(performance.memory.usedJSHeapSize / 1024 / 1024).toFixed(
+              2
+            )}MB`,
+            total: `${(
+              performance.memory.totalJSHeapSize /
+              1024 /
+              1024
+            ).toFixed(2)}MB`,
+            limit: `${(
+              performance.memory.jsHeapSizeLimit /
+              1024 /
+              1024
+            ).toFixed(2)}MB`,
+          });
         }
-      };
-
-      console.log("✅ 動画配信サイト向けPiP機能が利用可能になりました:");
-      console.log("- forceVideoStreamingPiP(): 動画配信サイト向け強制PiP");
-      console.log("- tryVideoAreaCapture(): 動画領域自動検出キャプチャ");
-      console.log("- tryFrameCapturePiP(): フレームキャプチャPiP");
-      console.log("- createScreenCapturePiP(): 画面キャプチャPiP");
-      console.log("- exitAllPiP(): 全PiPウィンドウ終了");
+      }, 5000);
     }
   }
 

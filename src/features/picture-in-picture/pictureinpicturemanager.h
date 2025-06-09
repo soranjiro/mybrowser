@@ -50,6 +50,7 @@ private:
   // JavaScript生成メソッド
   QString generateImageExtractionScript() const;
   QString generateVideoExtractionScript() const;
+  QString getEnhancedPiPScript() const;
 
   // WebViewでのJavaScript実行
   void executeJavaScript(WebView *webView, const QString &script);
