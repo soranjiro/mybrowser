@@ -201,6 +201,26 @@
         font-weight: 500;
       }
 
+      /* disablepictureinpicture属性を持つ動画のスタイル */
+      .video-item.disabled-pip {
+        border: 2px solid #ff9800;
+        position: relative;
+      }
+
+      .video-item.disabled-pip::before {
+        content: "🚫 PiP無効";
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        background: #ff9800;
+        color: white;
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 12px;
+        font-weight: bold;
+        z-index: 10;
+      }
+
       .video-pip-button {
         background: linear-gradient(135deg, #ff6b6b, #ee5a24);
         color: white;
@@ -262,8 +282,16 @@
           <ol>
             <li>下のメディアタイプ（画像/動画）を選択</li>
             <li>画像または動画から1つを選択してクリック</li>
+            <li>
+              <strong>動画テスト時:</strong> 🚫 PiP無効
+              マークのある動画も選択してテスト
+            </li>
             <li>「PiP起動」ボタンをクリック</li>
             <li>PiPウィンドウが表示されることを確認</li>
+            <li>
+              <strong>重要:</strong>
+              disablepictureinpicture属性を持つ動画でもPiPが動作するか確認
+            </li>
             <li>
               Mission Control (F3) を起動してPiPウィンドウが表示され続けるか確認
             </li>
@@ -417,6 +445,38 @@
             </video>
             <div class="video-overlay">Tears of Steel (SF映画)</div>
           </div>
+          <div
+            class="video-item disabled-pip"
+            data-url="https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/WhatCarCanYouGetForAGrand.mp4"
+          >
+            <video
+              src="https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/WhatCarCanYouGetForAGrand.mp4"
+              muted
+              loop
+              disablepictureinpicture
+            >
+              Your browser does not support the video tag.
+            </video>
+            <div class="video-overlay">
+              What Car Can You Get? (PiP無効テスト)
+            </div>
+          </div>
+          <div
+            class="video-item disabled-pip"
+            data-url="https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/VolkswagenGTIReview.mp4"
+          >
+            <video
+              src="https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/VolkswagenGTIReview.mp4"
+              muted
+              loop
+              disablepictureinpicture
+            >
+              Your browser does not support the video tag.
+            </video>
+            <div class="video-overlay">
+              Volkswagen GTI Review (PiP無効テスト)
+            </div>
+          </div>
         </div>
 
         <div class="controls">
@@ -455,6 +515,10 @@
             <strong>Space移動:</strong> PiPウィンドウがすべてのSpaceで表示される
           </li>
           <li><strong>常に最前面:</strong> 他のウィンドウに隠れない</li>
+          <li>
+            <strong>🚫 disablepictureinpicture対応:</strong>
+            属性が設定された動画でもNSPanelによりPiPが動作する
+          </li>
         </ul>
       </div>
     </div>
@@ -528,15 +592,24 @@
 
             const video = this.querySelector("video");
             const overlay = this.querySelector(".video-overlay");
+            const isDisabledPiP = video.hasAttribute("disablepictureinpicture");
 
             selectedVideoData = {
               url: this.dataset.url,
               title: overlay.textContent,
               type: "video",
+              disabledPiP: isDisabledPiP,
             };
 
-            status.textContent = `動画選択: ${selectedVideoData.title}`;
+            const pipStatus = isDisabledPiP ? " (PiP無効テスト)" : "";
+            status.textContent = `動画選択: ${selectedVideoData.title}${pipStatus}`;
             console.log("動画選択:", selectedVideoData);
+
+            if (isDisabledPiP) {
+              console.log(
+                "⚠️ この動画はdisablepictureinpicture属性が設定されています"
+              );
+            }
           });
         });
       }
@@ -625,7 +698,7 @@
         }
       }
 
-      // 動画PiP起動 (新機能 - NSPanel対応)
+      // 動画PiP起動 (新機能 - NSPanel対応 + disablepictureinpicture対応)
       function startVideoPiP() {
         if (!selectedVideoData) {
           alert("動画を選択してください");
@@ -634,20 +707,38 @@
 
         console.log("NSPanel対応動画PiP起動開始:", selectedVideoData);
 
+        if (selectedVideoData.disabledPiP) {
+          console.log(
+            "🚫 disablepictureinpicture属性が設定された動画でのPiPテスト開始"
+          );
+          console.log("NSPanelではブラウザの制限を回避してPiPを実現");
+        }
+
         // Video Picture-in-Picture起動メッセージを送信
         if (window.pipManager) {
           window.pipManager.startVideoPictureInPicture(
             selectedVideoData.url,
             selectedVideoData.title + " (NSPanel動画対応)"
           );
-          console.log(
-            "動画PiP起動完了 - NSPanel使用でフルスクリーン対応、動画コントロール付き"
-          );
+
+          if (selectedVideoData.disabledPiP) {
+            console.log(
+              "✅ disablepictureinpicture属性を回避してPiP起動成功 - NSPanel使用"
+            );
+          } else {
+            console.log(
+              "動画PiP起動完了 - NSPanel使用でフルスクリーン対応、動画コントロール付き"
+            );
+          }
         } else {
           console.log("動画PiPマネージャーが利用できません");
           // デバッグ用のフォールバック
+          const pipTestInfo = selectedVideoData.disabledPiP
+            ? `\n🚫 この動画はdisablepictureinpicture属性が設定されています\n✅ NSPanelでは属性を無視してPiPが動作するはずです`
+            : "";
+
           alert(
-            `NSPanel 動画PiP起動:\n動画: ${selectedVideoData.title}\nURL: ${selectedVideoData.url}\n\n動画コントロール機能付きPiPウィンドウでテストしてください。\n- 再生/一時停止\n- シーク機能\n- 音量調整\n- Mission Control対応\n- フルスクリーン対応`
+            `NSPanel 動画PiP起動:\n動画: ${selectedVideoData.title}\nURL: ${selectedVideoData.url}${pipTestInfo}\n\n動画コントロール機能付きPiPウィンドウでテストしてください。\n- 再生/一時停止\n- シーク機能\n- 音量調整\n- Mission Control対応\n- フルスクリーン対応\n- disablepictureinpicture属性回避`
           );
         }
       }

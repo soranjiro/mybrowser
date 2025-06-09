@@ -446,7 +446,44 @@ void MacOSPiPWindow::showVideo(const QString &videoUrl, const QString &title) {
         return;
     }
 
-    // Validate URL format
+    // Handle special URLs for disablepictureinpicture videos
+    if (videoUrl.startsWith("placeholder://disablepictureinpicture-video")) {
+        qDebug() << "Showing placeholder for disablepictureinpicture video:" << title;
+        showPlaceholderVideo(title + " (PiP無効動画)");
+        return;
+    }
+
+    if (videoUrl.startsWith("frame-capture://current-frame")) {
+        qDebug() << "Detected frame capture request - should be handled via videoData parameter";
+        showPlaceholderVideo(title + " (フレームキャプチャ)");
+        return;
+    }
+
+    // Handle Blob URLs - pass through to media player but with fallback
+    if (videoUrl.startsWith("blob:")) {
+        qDebug() << "Attempting to play Blob URL:" << videoUrl;
+        mediaPlayer->setSource(QUrl(videoUrl));
+        mediaPlayer->setVideoOutput(videoWidget);
+
+        // Set up error handling for Blob URLs
+        connect(mediaPlayer, &QMediaPlayer::errorOccurred, this, [this, title](QMediaPlayer::Error error) {
+            qDebug() << "Media player error with Blob URL:" << error;
+            showPlaceholderVideo(title + " (Blob URL再生エラー)");
+        }, Qt::UniqueConnection);
+
+        show();
+        raise();
+        activateWindow();
+
+        QTimer::singleShot(500, this, [this]() {
+            applyMacOSSpacesSettings();
+        });
+
+        qDebug() << "PiP window attempting to show Blob video:" << title;
+        return;
+    }
+
+    // Validate standard URL format
     if (!videoUrl.startsWith("http://") && !videoUrl.startsWith("https://") && !videoUrl.startsWith("file://")) {
         qDebug() << "Invalid video URL format:" << videoUrl;
         showPlaceholderVideo(title + " (無効なURL)");

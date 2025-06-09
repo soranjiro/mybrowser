@@ -563,8 +563,12 @@ QString PictureInPictureManager::generateVideoExtractionScript() const {
 
             const rect = targetVideo.getBoundingClientRect();
 
-            // Try multiple ways to get video URL
+            // Enhanced video URL extraction for disablepictureinpicture videos
             let videoUrl = targetVideo.src || targetVideo.currentSrc;
+            let isVideoWithNativePiPDisabled = targetVideo.hasAttribute('disablepictureinpicture');
+            let videoData = null;
+
+            console.log('Processing video with disablepictureinpicture:', isVideoWithNativePiPDisabled);
 
             // If no direct URL, check source elements
             if (!videoUrl || videoUrl === '') {
@@ -581,16 +585,59 @@ QString PictureInPictureManager::generateVideoExtractionScript() const {
             if (!videoUrl || videoUrl === '') {
                 videoUrl = targetVideo.getAttribute('data-src') ||
                           targetVideo.getAttribute('data-url') ||
-                          targetContainer?.getAttribute('data-url') || '';
+                          targetVideo.getAttribute('data-video-url') ||
+                          targetContainer?.getAttribute('data-url') ||
+                          targetContainer?.getAttribute('data-src') || '';
+            }
+
+            // Enhanced handling for videos with Blob URLs or Base64 data
+            if (videoUrl && (videoUrl.startsWith('blob:') || videoUrl.startsWith('data:'))) {
+                console.log('Detected Blob/Data URL for disablepictureinpicture video:', videoUrl);
+
+                // For Blob URLs, we'll pass the URL directly to the macOS implementation
+                // For Data URLs, extract the video data
+                if (videoUrl.startsWith('data:video/')) {
+                    try {
+                        videoData = videoUrl; // Pass the full data URL
+                    } catch (e) {
+                        console.error('Failed to process data URL:', e);
+                    }
+                }
+            }
+
+            // Fallback: Try to capture current video frame if no URL found
+            if (!videoUrl || videoUrl === '') {
+                console.log('No video URL found, attempting frame capture for disablepictureinpicture video');
+                try {
+                    const canvas = document.createElement('canvas');
+                    const ctx = canvas.getContext('2d');
+                    canvas.width = targetVideo.videoWidth || targetVideo.offsetWidth;
+                    canvas.height = targetVideo.videoHeight || targetVideo.offsetHeight;
+
+                    // Draw current video frame
+                    ctx.drawImage(targetVideo, 0, 0, canvas.width, canvas.height);
+
+                    // Get frame data as base64
+                    videoData = canvas.toDataURL('image/png');
+                    videoUrl = 'frame-capture://current-frame';
+
+                    console.log('Successfully captured video frame for PiP');
+                } catch (e) {
+                    console.error('Frame capture failed:', e);
+                    // Final fallback
+                    videoUrl = 'placeholder://disablepictureinpicture-video';
+                }
             }
 
             const result = {
                 success: true,
                 videoUrl: videoUrl,
+                videoData: videoData, // Additional data for Blob/Data URLs or frame captures
+                isDisabledPiP: isVideoWithNativePiPDisabled,
                 title: targetVideo.title ||
                        targetVideo.getAttribute('alt') ||
                        targetContainer?.querySelector('h1, h2, h3, .video-overlay, .title')?.textContent ||
-                       'Selected Video',
+                       (isVideoWithNativePiPDisabled ? 'PiP無効動画' : 'Selected Video'),
                 width: rect.width,
                 height: rect.height,
                 duration: targetVideo.duration,
@@ -599,7 +646,9 @@ QString PictureInPictureManager::generateVideoExtractionScript() const {
                 muted: targetVideo.muted,
                 volume: targetVideo.volume,
                 readyState: targetVideo.readyState,
-                networkState: targetVideo.networkState
+                networkState: targetVideo.networkState,
+                videoWidth: targetVideo.videoWidth,
+                videoHeight: targetVideo.videoHeight
             };
 
             console.log('Video PiP extraction result:', result);
@@ -730,20 +779,39 @@ void PictureInPictureManager::executeVideoJavaScript(WebView *webView, const QSt
     if (resultMap.contains("success") && resultMap["success"].toBool()) {
       QString title = resultMap["title"].toString();
       QString videoUrl = resultMap["videoUrl"].toString();
+      QString videoData = resultMap["videoData"].toString();
+      bool isDisabledPiP = resultMap["isDisabledPiP"].toBool();
 
       qDebug() << "Video PiP extraction successful:";
       qDebug() << "  Title:" << title;
       qDebug() << "  URL:" << videoUrl;
+      qDebug() << "  Has VideoData:" << !videoData.isEmpty();
+      qDebug() << "  Is Disabled PiP:" << isDisabledPiP;
       qDebug() << "  Width:" << resultMap["width"].toInt();
       qDebug() << "  Height:" << resultMap["height"].toInt();
+      qDebug() << "  Duration:" << resultMap["duration"].toDouble();
       qDebug() << "  Ready State:" << resultMap["readyState"].toInt();
 
-      if (!videoUrl.isEmpty()) {
+      // Handle different types of video data
+      if (!videoData.isEmpty()) {
+        // We have additional video data (Base64, Blob data, or frame capture)
+        qDebug() << "PiP: Processing video with additional data for disablepictureinpicture video";
+        if (videoData.startsWith("data:image/")) {
+          // This is a captured frame - show as image PiP
+          createPiPFromImageData(videoData, title + " (フレームキャプチャ)");
+        } else if (videoData.startsWith("data:video/")) {
+          // This is Base64 video data
+          createPiPFromVideoData(videoData, title);
+        } else {
+          // Fallback to URL-based approach
+          createPiPFromVideoData(videoUrl, title);
+        }
+      } else if (!videoUrl.isEmpty()) {
         qDebug() << "PiP: Processing video URL:" << videoUrl << "with title:" << title;
         createPiPFromVideoData(videoUrl, title);
       } else {
-        qDebug() << "PiP: No video URL found in successful result";
-        createPiPFromVideoData("demo://test-video", "Test Video - 動画URLが見つかりませんでした");
+        qDebug() << "PiP: No video URL or data found in successful result";
+        createPiPFromVideoData("demo://test-video", title + " - 動画データが見つかりませんでした");
       }
     } else {
       QString errorMsg = resultMap["message"].toString();
