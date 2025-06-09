@@ -1,6 +1,13 @@
 cmake_minimum_required(VERSION 3.16)
 project(MyBrowser LANGUAGES CXX)
 
+# Add Objective-C++ support for macOS
+if(APPLE)
+    enable_language(OBJCXX)
+    set(CMAKE_OBJCXX_STANDARD 17)
+    set(CMAKE_OBJCXX_STANDARD_REQUIRED ON)
+endif()
+
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
@@ -22,7 +29,7 @@ set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOUIC ON)
 
-find_package(Qt6 REQUIRED COMPONENTS Widgets WebEngineCore WebEngineWidgets)
+find_package(Qt6 REQUIRED COMPONENTS Widgets WebEngineCore WebEngineWidgets Multimedia MultimediaWidgets)
 
 message(STATUS "Qt6WebEngineCore_INCLUDE_DIRS: ${Qt6WebEngineCore_INCLUDE_DIRS}")
 message(STATUS "Qt6WebEngineWidgets_INCLUDE_DIRS: ${Qt6WebEngineWidgets_INCLUDE_DIRS}")
@@ -60,6 +67,8 @@ add_executable(MyBrowser
     # Picture-in-Picture
     src/features/picture-in-picture/pictureinpicturemanager.cpp
     src/features/picture-in-picture/pictureinpicturemanager.h
+    src/features/picture-in-picture/macospipwindow.mm
+    src/features/picture-in-picture/macospipwindow.h
 
     # Core
     src/core/ui_constants.h
@@ -84,4 +93,14 @@ target_link_libraries(MyBrowser PRIVATE
     Qt6::Widgets
     Qt6::WebEngineCore
     Qt6::WebEngineWidgets
+    Qt6::Multimedia
+    Qt6::MultimediaWidgets
 )
+
+# Add macOS-specific frameworks for PiP functionality
+if(APPLE)
+    target_link_libraries(MyBrowser PRIVATE
+        "-framework Cocoa"
+        "-framework Foundation"
+    )
+endif()
