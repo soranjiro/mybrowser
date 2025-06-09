@@ -16,41 +16,6 @@ on:
   workflow_dispatch:
 
 jobs:
-  build-release:
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Install dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            build-essential \
-            cmake \
-            qt6-base-dev \
-            qt6-webengine-dev \
-            qt6-multimedia-dev \
-            libgl1-mesa-dev \
-            libxkbcommon-dev \
-            libxcb-xinerama0-dev \
-            libxcb-cursor-dev
-
-      - name: Make build script executable
-        run: chmod +x scripts/build_release.sh
-
-      - name: Build release
-        run: ./scripts/build_release.sh
-
-      - name: Upload build artifacts
-        uses: actions/upload-artifact@v4
-        if: success()
-        with:
-          name: mybrowser-release-linux
-          path: build/MyBrowser
-          retention-days: 30
-
   build-release-macos:
     runs-on: macos-latest
 
@@ -76,38 +41,4 @@ jobs:
         with:
           name: mybrowser-release-macos
           path: build/MyBrowser
-          retention-days: 30
-
-  build-release-windows:
-    runs-on: windows-latest
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Qt6
-        uses: jurplel/install-qt-action@v3
-        with:
-          version: "6.5.0"
-          host: "windows"
-          target: "desktop"
-          modules: "qtwebengine qtmultimedia"
-
-      - name: Setup MSVC
-        uses: microsoft/setup-msbuild@v1.3
-
-      - name: Build release (Windows)
-        run: |
-          mkdir build
-          cd build
-          cmake -DCMAKE_BUILD_TYPE=Release -G "Visual Studio 17 2022" ..
-          cmake --build . --config Release
-        shell: cmd
-
-      - name: Upload build artifacts
-        uses: actions/upload-artifact@v4
-        if: success()
-        with:
-          name: mybrowser-release-windows
-          path: build/Release/MyBrowser.exe
           retention-days: 30
