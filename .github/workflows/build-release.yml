@@ -22,6 +22,9 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.RW_TOKEN_GITHUB }}
+          fetch-depth: 0
 
       - name: Install Qt6
         run: |
@@ -34,6 +37,29 @@ jobs:
 
       - name: Build release
         run: ./scripts/build_release.sh
+
+      - name: Check for changes in build output
+        id: changes
+        run: |
+          if [ -f build/MyBrowser ]; then
+            # Check if the binary has changed or is new
+            if git diff --quiet build/MyBrowser 2>/dev/null; then
+              echo "changed=false" >> $GITHUB_OUTPUT
+            else
+              echo "changed=true" >> $GITHUB_OUTPUT
+            fi
+          else
+            echo "changed=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Commit and push changes
+        if: steps.changes.outputs.changed == 'true' && github.event_name != 'pull_request'
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add build/MyBrowser
+          git commit -m "🚀 Auto-update release binary [skip ci]" || exit 0
+          git push
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
