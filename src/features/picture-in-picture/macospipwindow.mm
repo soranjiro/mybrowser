@@ -7,13 +7,23 @@
 #include <QDebug>
 #include <QPainter>
 #include <QFont>
+#include <QMediaPlayer>
+#include <QVideoWidget>
+#include <QHBoxLayout>
+#include <QSlider>
+#include <QStackedWidget>
+#include <QLabel>
+#include <QTime>
+#include <QAudioOutput>
 
 #ifdef Q_OS_MACOS
 #import <Cocoa/Cocoa.h>
 #endif
 
 MacOSPiPWindow::MacOSPiPWindow(QWidget *parent)
-    : QWidget(parent), isDragging(false), networkManager(nullptr) {
+    : QWidget(parent), isDragging(false), networkManager(nullptr),
+      currentMediaType(Image), mediaPlayer(nullptr), videoWidget(nullptr),
+      contentStack(nullptr), videoControlsWidget(nullptr) {
 #ifdef Q_OS_MACOS
     pipPanel = nullptr;
 #endif
@@ -27,6 +37,10 @@ MacOSPiPWindow::MacOSPiPWindow(QWidget *parent)
 }
 
 MacOSPiPWindow::~MacOSPiPWindow() {
+    if (mediaPlayer) {
+        mediaPlayer->stop();
+        delete mediaPlayer;
+    }
 #ifdef Q_OS_MACOS
     if (pipPanel) {
         [pipPanel close];
@@ -44,20 +58,10 @@ void MacOSPiPWindow::setupUI() {
     setWindowTitle("MyBrowser - Picture-in-Picture");
     setWindowIcon(QIcon(":/icons/pip.png"));
 
-    // Create layout
+    // Create main layout
     layout = new QVBoxLayout(this);
     layout->setContentsMargins(5, 5, 5, 5);
     layout->setSpacing(5);
-
-    // Image display label
-    imageLabel = new QLabel(this);
-    imageLabel->setAlignment(Qt::AlignCenter);
-    imageLabel->setStyleSheet(
-        "QLabel { background-color: rgba(0, 0, 0, 200); border: 2px solid #007ACC; "
-        "border-radius: 8px; padding: 10px; }"
-    );
-    imageLabel->setMinimumSize(200, 150);
-    imageLabel->setScaledContents(true);
 
     // Close button
     closeButton = new QPushButton("×", this);
@@ -68,9 +72,46 @@ void MacOSPiPWindow::setupUI() {
         "QPushButton:hover { background-color: #ff3b30; }"
     );
 
-    // Add to layout
+    // Create stacked widget for switching between image and video
+    contentStack = new QStackedWidget(this);
+
+    // Setup image display
+    imageLabel = new QLabel(this);
+    imageLabel->setAlignment(Qt::AlignCenter);
+    imageLabel->setStyleSheet(
+        "QLabel { background-color: rgba(0, 0, 0, 200); border: 2px solid #007ACC; "
+        "border-radius: 8px; padding: 10px; }"
+    );
+    imageLabel->setMinimumSize(200, 150);
+    imageLabel->setScaledContents(true);
+
+    // Setup video display
+    videoWidget = new QVideoWidget(this);
+    videoWidget->setStyleSheet(
+        "QVideoWidget { background-color: rgba(0, 0, 0, 200); border: 2px solid #007ACC; "
+        "border-radius: 8px; }"
+    );
+    videoWidget->setMinimumSize(200, 150);
+
+    // Setup media player
+    mediaPlayer = new QMediaPlayer(this);
+    mediaPlayer->setVideoOutput(videoWidget);
+
+    // Add widgets to stack
+    contentStack->addWidget(imageLabel);
+    contentStack->addWidget(videoWidget);
+    contentStack->setCurrentIndex(0); // Start with image mode
+
+    // Setup video controls
+    setupVideoControls();
+
+    // Add to main layout
     layout->addWidget(closeButton, 0, Qt::AlignRight);
-    layout->addWidget(imageLabel);
+    layout->addWidget(contentStack);
+    layout->addWidget(videoControlsWidget);
+
+    // Initially hide video controls
+    videoControlsWidget->hide();
 
     connect(closeButton, &QPushButton::clicked, this, &MacOSPiPWindow::onCloseButtonClicked);
     resize(300, 250);
@@ -253,6 +294,51 @@ void MacOSPiPWindow::showPlaceholderImage(const QString &text) {
     showImage(placeholder, text);
 }
 
+void MacOSPiPWindow::showPlaceholderVideo(const QString &text) {
+    // Switch to video mode to show placeholder in video widget area
+    currentMediaType = Video;
+    switchToVideoMode();
+
+    // Create a placeholder widget with message
+    QPixmap placeholder(400, 300);
+    placeholder.fill(QColor(255, 107, 107, 180)); // Red-ish color for video
+
+    QPainter painter(&placeholder);
+    painter.setPen(Qt::white);
+    painter.setFont(QFont("Arial", 18, QFont::Bold));
+
+    // Draw video icon
+    painter.drawText(QRect(0, 80, 400, 50), Qt::AlignCenter, "🎬");
+    painter.setFont(QFont("Arial", 14, QFont::Bold));
+    painter.drawText(QRect(10, 150, 380, 100), Qt::AlignCenter | Qt::TextWordWrap, text);
+
+    painter.end();
+
+    // Set a simple style for video widget with placeholder appearance
+    videoWidget->setStyleSheet(
+        "QVideoWidget { "
+        "background-color: rgba(255, 107, 107, 180); "
+        "border: 2px solid #FF6B6B; "
+        "border-radius: 8px; "
+        "}"
+    );
+
+    if (!text.isEmpty()) {
+        setWindowTitle(text);
+    }
+
+    show();
+    raise();
+    activateWindow();
+
+    // Apply macOS settings after window is displayed
+    QTimer::singleShot(500, this, [this]() {
+        applyMacOSSpacesSettings();
+    });
+
+    qDebug() << "PiP window showing video placeholder:" << text;
+}
+
 void MacOSPiPWindow::mousePressEvent(QMouseEvent *event) {
     if (event->button() == Qt::LeftButton) {
         isDragging = true;
@@ -275,4 +361,217 @@ void MacOSPiPWindow::mouseDoubleClickEvent(QMouseEvent *event) {
 
 void MacOSPiPWindow::onCloseButtonClicked() {
     close();
+}
+
+void MacOSPiPWindow::setupVideoControls() {
+    videoControlsWidget = new QWidget(this);
+    videoControlsWidget->setStyleSheet(
+        "QWidget { background-color: rgba(0, 0, 0, 150); border-radius: 5px; padding: 5px; }"
+    );
+
+    controlsLayout = new QHBoxLayout(videoControlsWidget);
+    controlsLayout->setContentsMargins(5, 5, 5, 5);
+    controlsLayout->setSpacing(5);
+
+    // Play/Pause button
+    playPauseButton = new QPushButton("▶", videoControlsWidget);
+    playPauseButton->setFixedSize(30, 30);
+    playPauseButton->setStyleSheet(
+        "QPushButton { background-color: #007ACC; border: none; border-radius: 15px; "
+        "color: white; font-weight: bold; font-size: 14px; } "
+        "QPushButton:hover { background-color: #005a9e; }"
+    );
+
+    // Position slider
+    positionSlider = new QSlider(Qt::Horizontal, videoControlsWidget);
+    positionSlider->setRange(0, 0);
+    positionSlider->setStyleSheet(
+        "QSlider::groove:horizontal { background: #555; height: 8px; border-radius: 4px; } "
+        "QSlider::handle:horizontal { background: #007ACC; border: none; width: 18px; "
+        "height: 18px; border-radius: 9px; margin: -5px 0; } "
+        "QSlider::sub-page:horizontal { background: #007ACC; border-radius: 4px; }"
+    );
+
+    // Volume slider
+    volumeSlider = new QSlider(Qt::Horizontal, videoControlsWidget);
+    volumeSlider->setRange(0, 100);
+    volumeSlider->setValue(50);
+    volumeSlider->setMaximumWidth(80);
+    volumeSlider->setStyleSheet(
+        "QSlider::groove:horizontal { background: #555; height: 8px; border-radius: 4px; } "
+        "QSlider::handle:horizontal { background: #007ACC; border: none; width: 18px; "
+        "height: 18px; border-radius: 9px; margin: -5px 0; } "
+        "QSlider::sub-page:horizontal { background: #007ACC; border-radius: 4px; }"
+    );
+
+    // Time label
+    timeLabel = new QLabel("00:00 / 00:00", videoControlsWidget);
+    timeLabel->setStyleSheet("QLabel { color: white; font-size: 12px; }");
+    timeLabel->setMinimumWidth(80);
+
+    // Add to layout
+    controlsLayout->addWidget(playPauseButton);
+    controlsLayout->addWidget(positionSlider);
+    controlsLayout->addWidget(timeLabel);
+    controlsLayout->addWidget(volumeSlider);
+
+    // Connect signals
+    connect(playPauseButton, &QPushButton::clicked, this, &MacOSPiPWindow::onPlayPauseClicked);
+    connect(positionSlider, static_cast<void(QSlider::*)(int)>(&QSlider::valueChanged),
+            this, static_cast<void(MacOSPiPWindow::*)(int)>(&MacOSPiPWindow::onPositionChanged));
+    connect(volumeSlider, static_cast<void(QSlider::*)(int)>(&QSlider::valueChanged), this, &MacOSPiPWindow::onVolumeChanged);
+    connect(mediaPlayer, &QMediaPlayer::durationChanged, this, &MacOSPiPWindow::onDurationChanged);
+    connect(mediaPlayer, &QMediaPlayer::positionChanged, this, [this](qint64 position) {
+        if (!positionSlider->isSliderDown()) {
+            positionSlider->setValue(position);
+        }
+        updateVideoControls();
+    });
+}
+
+void MacOSPiPWindow::showVideo(const QString &videoUrl, const QString &title) {
+    qDebug() << "Loading video from URL:" << videoUrl;
+
+    currentMediaType = Video;
+    switchToVideoMode();
+
+    if (!title.isEmpty()) {
+        setWindowTitle(title);
+    }
+
+    // Handle demo/test URLs specially
+    if (videoUrl.startsWith("demo://") || videoUrl.startsWith("test://")) {
+        qDebug() << "Showing placeholder for demo video:" << title;
+        showPlaceholderVideo(title);
+        return;
+    }
+
+    // Validate URL format
+    if (!videoUrl.startsWith("http://") && !videoUrl.startsWith("https://") && !videoUrl.startsWith("file://")) {
+        qDebug() << "Invalid video URL format:" << videoUrl;
+        showPlaceholderVideo(title + " (無効なURL)");
+        return;
+    }
+
+    mediaPlayer->setSource(QUrl(videoUrl));
+    mediaPlayer->setVideoOutput(videoWidget);
+
+    show();
+    raise();
+    activateWindow();
+
+    // Apply macOS settings after window is displayed
+    QTimer::singleShot(500, this, [this]() {
+        applyMacOSSpacesSettings();
+    });
+
+    qDebug() << "PiP window showing video:" << title;
+}
+
+void MacOSPiPWindow::showVideoFromBase64(const QString &base64Data, const QString &title) {
+    qDebug() << "Loading video from Base64 data:" << title;
+
+    // For now, show placeholder - full Base64 video support would require more complex implementation
+    showPlaceholderImage("Base64 Video: " + title);
+    qDebug() << "Base64 video display not fully implemented yet";
+}
+
+void MacOSPiPWindow::playVideo() {
+    if (mediaPlayer && currentMediaType == Video) {
+        mediaPlayer->play();
+        playPauseButton->setText("⏸");
+        qDebug() << "Playing video";
+    }
+}
+
+void MacOSPiPWindow::pauseVideo() {
+    if (mediaPlayer && currentMediaType == Video) {
+        mediaPlayer->pause();
+        playPauseButton->setText("▶");
+        qDebug() << "Pausing video";
+    }
+}
+
+void MacOSPiPWindow::stopVideo() {
+    if (mediaPlayer && currentMediaType == Video) {
+        mediaPlayer->stop();
+        playPauseButton->setText("▶");
+        qDebug() << "Stopping video";
+    }
+}
+
+void MacOSPiPWindow::setVideoPosition(qint64 position) {
+    if (mediaPlayer && currentMediaType == Video) {
+        mediaPlayer->setPosition(position);
+    }
+}
+
+void MacOSPiPWindow::setVideoVolume(int volume) {
+    if (mediaPlayer) {
+        QAudioOutput *audioOutput = mediaPlayer->audioOutput();
+        if (audioOutput) {
+            audioOutput->setVolume(volume / 100.0);
+        }
+    }
+}
+
+void MacOSPiPWindow::onPlayPauseClicked() {
+    if (mediaPlayer && currentMediaType == Video) {
+        if (mediaPlayer->playbackState() == QMediaPlayer::PlayingState) {
+            pauseVideo();
+        } else {
+            playVideo();
+        }
+    }
+}
+
+void MacOSPiPWindow::onPositionChanged(qint64 position) {
+    if (mediaPlayer && currentMediaType == Video) {
+        mediaPlayer->setPosition(position);
+    }
+}
+
+void MacOSPiPWindow::onPositionChanged(int position) {
+    if (mediaPlayer && currentMediaType == Video) {
+        mediaPlayer->setPosition(static_cast<qint64>(position));
+    }
+}
+
+void MacOSPiPWindow::onDurationChanged(qint64 duration) {
+    positionSlider->setRange(0, duration);
+    updateVideoControls();
+}
+
+void MacOSPiPWindow::onVolumeChanged(int volume) {
+    setVideoVolume(volume);
+}
+
+void MacOSPiPWindow::updateVideoControls() {
+    if (mediaPlayer && currentMediaType == Video) {
+        qint64 position = mediaPlayer->position();
+        qint64 duration = mediaPlayer->duration();
+
+        QTime currentTime = QTime::fromMSecsSinceStartOfDay(position);
+        QTime totalTime = QTime::fromMSecsSinceStartOfDay(duration);
+
+        QString timeText = QString("%1 / %2")
+            .arg(currentTime.toString(duration >= 3600000 ? "hh:mm:ss" : "mm:ss"))
+            .arg(totalTime.toString(duration >= 3600000 ? "hh:mm:ss" : "mm:ss"));
+
+        timeLabel->setText(timeText);
+    }
+}
+
+void MacOSPiPWindow::switchToImageMode() {
+    currentMediaType = Image;
+    contentStack->setCurrentIndex(0);
+    videoControlsWidget->hide();
+    resize(300, 250);
+}
+
+void MacOSPiPWindow::switchToVideoMode() {
+    currentMediaType = Video;
+    contentStack->setCurrentIndex(1);
+    videoControlsWidget->show();
+    resize(400, 300);
 }

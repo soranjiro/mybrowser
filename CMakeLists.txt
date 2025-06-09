@@ -29,7 +29,7 @@ set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOUIC ON)
 
-find_package(Qt6 REQUIRED COMPONENTS Widgets WebEngineCore WebEngineWidgets)
+find_package(Qt6 REQUIRED COMPONENTS Widgets WebEngineCore WebEngineWidgets Multimedia MultimediaWidgets)
 
 message(STATUS "Qt6WebEngineCore_INCLUDE_DIRS: ${Qt6WebEngineCore_INCLUDE_DIRS}")
 message(STATUS "Qt6WebEngineWidgets_INCLUDE_DIRS: ${Qt6WebEngineWidgets_INCLUDE_DIRS}")
@@ -93,6 +93,8 @@ target_link_libraries(MyBrowser PRIVATE
     Qt6::Widgets
     Qt6::WebEngineCore
     Qt6::WebEngineWidgets
+    Qt6::Multimedia
+    Qt6::MultimediaWidgets
 )
 
 # Add macOS-specific frameworks for PiP functionality

@@ -10,7 +10,7 @@
 #include <QTimer>
 
 PictureInPictureManager::PictureInPictureManager(MainWindow *parent)
-    : QObject(parent), mainWindow(parent), imagePiPAction(nullptr) {
+    : QObject(parent), mainWindow(parent), imagePiPAction(nullptr), videoPiPAction(nullptr) {
   qDebug() << "PictureInPictureManager initialized";
 }
 
@@ -24,7 +24,14 @@ void PictureInPictureManager::setupActions() {
   imagePiPAction->setStatusTip("Open selected image in Picture-in-Picture window (macOS Spaces compatible)");
   imagePiPAction->setToolTip("Image PiP (Ctrl+Alt+I)");
 
+  // Add video PiP action
+  videoPiPAction = new QAction("Video Picture-in-Picture", this);
+  videoPiPAction->setShortcut(QKeySequence("Ctrl+Alt+V"));
+  videoPiPAction->setStatusTip("Open selected video in Picture-in-Picture window");
+  videoPiPAction->setToolTip("Video PiP (Ctrl+Alt+V)");
+
   connect(imagePiPAction, &QAction::triggered, this, &PictureInPictureManager::onImagePiPTriggered);
+  connect(videoPiPAction, &QAction::triggered, this, &PictureInPictureManager::onVideoPiPTriggered);
   qDebug() << "PiP actions setup completed";
 }
 
@@ -36,6 +43,7 @@ void PictureInPictureManager::addToMenu(QMenu *viewMenu) {
   viewMenu->addSeparator();
   QMenu *pipMenu = viewMenu->addMenu("Picture-in-Picture");
   pipMenu->addAction(imagePiPAction);
+  pipMenu->addAction(videoPiPAction);
 
   QAction *closeAllAction = new QAction("Close All PiP Windows", this);
   closeAllAction->setShortcut(QKeySequence("Ctrl+Alt+X"));
@@ -420,7 +428,7 @@ void PictureInPictureManager::executeJavaScript(WebView *webView, const QString 
       }
     } else {
       qDebug() << "PiP: JavaScript execution failed or no images found";
-      createPiPFromImageData("demo://test-image", "Test Image - No Real Images Found");
+      createPiPFromImageData("demo://test-image", "Test Image - 画像が見つかりませんでした");
     }
   });
 }
@@ -445,6 +453,326 @@ void PictureInPictureManager::createPiPFromImageData(const QString &imageData, c
   });
 
   qDebug() << "PiP window created for:" << title;
+}
+
+void PictureInPictureManager::createVideoPiP(WebView *webView) {
+  if (!webView) {
+    qDebug() << "No WebView provided for video PiP";
+    return;
+  }
+
+  connect(webView, &WebView::pipVideoRequested, this, &PictureInPictureManager::createPiPFromVideoData, Qt::UniqueConnection);
+  QString script = generateVideoExtractionScript();
+  executeVideoJavaScript(webView, script);
+}
+
+void PictureInPictureManager::onVideoPiPTriggered() {
+  if (mainWindow) {
+    WebView *currentView = mainWindow->currentWebView();
+    if (currentView) {
+      qDebug() << "Video PiP triggered via keyboard shortcut";
+
+      // Add visual feedback script for video
+      QString feedbackScript = R"(
+        (function() {
+          // Create temporary notification
+          const notification = document.createElement('div');
+          notification.innerHTML = '🎬 PiP動画検索中...';
+          notification.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: linear-gradient(135deg, #FF6B6B, #FF8E53);
+            color: white;
+            padding: 12px 20px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: bold;
+            z-index: 999999;
+            font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+            box-shadow: 0 4px 20px rgba(255, 107, 107, 0.3);
+            animation: slideInRight 0.3s ease-out;
+          `;
+
+          document.body.appendChild(notification);
+
+          // Remove notification after 2 seconds
+          setTimeout(() => {
+            notification.style.animation = 'slideOutRight 0.3s ease-in';
+            setTimeout(() => {
+              if (notification.parentElement) {
+                notification.remove();
+              }
+            }, 300);
+          }, 2000);
+        })();
+      )";
+
+      // Execute feedback script first
+      currentView->page()->runJavaScript(feedbackScript);
+
+      // Then execute video PiP creation after a short delay
+      QTimer::singleShot(200, this, [this, currentView]() {
+        createVideoPiP(currentView);
+      });
+    } else {
+      qDebug() << "No active WebView found for video PiP";
+    }
+  }
+}
+
+QString PictureInPictureManager::generateVideoExtractionScript() const {
+  return R"(
+(function() {
+    let targetVideo = null;
+    let targetContainer = null;
+
+    // Find hovered or focused videos first
+    const activeVideos = document.querySelectorAll('video:hover, video:focus, video:active');
+    if (activeVideos.length > 0) {
+        targetVideo = activeVideos[0];
+        targetContainer = targetVideo.closest('.video-item') || targetVideo.parentElement;
+    }
+
+    // Otherwise find largest visible video
+    if (!targetVideo) {
+        const videos = document.querySelectorAll('video');
+        let bestVideo = null;
+        let maxArea = 0;
+
+        for (let video of videos) {
+            const rect = video.getBoundingClientRect();
+            if (rect.width >= 100 && rect.height >= 50 && video.readyState >= 2) {
+                const area = rect.width * rect.height;
+                if (area > maxArea) {
+                    maxArea = area;
+                    bestVideo = video;
+                }
+            }
+        }
+        targetVideo = bestVideo;
+        if (targetVideo) {
+            targetContainer = targetVideo.closest('.video-item') || targetVideo.parentElement;
+        }
+    }
+
+    if (targetVideo) {
+        try {
+            // Add PiP overlay to the original video
+            addVideoPiPOverlay(targetVideo, targetContainer);
+
+            const rect = targetVideo.getBoundingClientRect();
+
+            // Try multiple ways to get video URL
+            let videoUrl = targetVideo.src || targetVideo.currentSrc;
+
+            // If no direct URL, check source elements
+            if (!videoUrl || videoUrl === '') {
+                const sources = targetVideo.querySelectorAll('source');
+                for (let source of sources) {
+                    if (source.src) {
+                        videoUrl = source.src;
+                        break;
+                    }
+                }
+            }
+
+            // If still no URL, check data attributes
+            if (!videoUrl || videoUrl === '') {
+                videoUrl = targetVideo.getAttribute('data-src') ||
+                          targetVideo.getAttribute('data-url') ||
+                          targetContainer?.getAttribute('data-url') || '';
+            }
+
+            const result = {
+                success: true,
+                videoUrl: videoUrl,
+                title: targetVideo.title ||
+                       targetVideo.getAttribute('alt') ||
+                       targetContainer?.querySelector('h1, h2, h3, .video-overlay, .title')?.textContent ||
+                       'Selected Video',
+                width: rect.width,
+                height: rect.height,
+                duration: targetVideo.duration,
+                currentTime: targetVideo.currentTime,
+                paused: targetVideo.paused,
+                muted: targetVideo.muted,
+                volume: targetVideo.volume,
+                readyState: targetVideo.readyState,
+                networkState: targetVideo.networkState
+            };
+
+            console.log('Video PiP extraction result:', result);
+            return result;
+        } catch (error) {
+            console.error('Error processing video:', error);
+            return { success: false, message: 'Error processing video: ' + error.message };
+        }
+    }
+
+    return { success: false, message: 'No suitable videos found' };
+
+    // Helper function to add PiP overlay for video
+    function addVideoPiPOverlay(video, container) {
+        // Remove any existing overlay
+        const existingOverlay = video.parentElement.querySelector('.pip-video-overlay');
+        if (existingOverlay) {
+            existingOverlay.remove();
+        }
+
+        // Create PiP overlay
+        const overlay = document.createElement('div');
+        overlay.className = 'pip-video-overlay';
+        overlay.innerHTML = '🎬 Video PiP中';
+        overlay.style.cssText = `
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            background: linear-gradient(135deg, #FF6B6B, #FF8E53);
+            color: white;
+            padding: 6px 10px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: bold;
+            z-index: 1000;
+            pointer-events: none;
+            font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+            box-shadow: 0 2px 8px rgba(255, 107, 107, 0.3);
+            animation: videoPipPulse 2s ease-in-out infinite;
+        `;
+
+        // Add CSS animation for the video pulse effect
+        if (!document.querySelector('#video-pip-animation-styles')) {
+            const style = document.createElement('style');
+            style.id = 'video-pip-animation-styles';
+            style.textContent = `
+                @keyframes videoPipPulse {
+                    0%, 100% {
+                        opacity: 1;
+                        transform: scale(1);
+                    }
+                    50% {
+                        opacity: 0.8;
+                        transform: scale(1.05);
+                    }
+                }
+                .pip-video-border-effect {
+                    position: relative;
+                    overflow: hidden;
+                }
+                .pip-video-border-effect::after {
+                    content: '';
+                    position: absolute;
+                    top: -2px;
+                    left: -2px;
+                    right: -2px;
+                    bottom: -2px;
+                    background: linear-gradient(45deg, #FF6B6B, #FF8E53, #FF6B6B);
+                    border-radius: 8px;
+                    z-index: -1;
+                    animation: videoPipBorderRotate 3s linear infinite;
+                }
+                @keyframes videoPipBorderRotate {
+                    0% { transform: rotate(0deg); }
+                    100% { transform: rotate(360deg); }
+                }
+            `;
+            document.head.appendChild(style);
+        }
+
+        // Make sure parent has relative positioning
+        const parent = video.parentElement;
+        if (getComputedStyle(parent).position === 'static') {
+            parent.style.position = 'relative';
+        }
+
+        parent.appendChild(overlay);
+
+        // Add border effect to the video
+        video.classList.add('pip-video-border-effect');
+        video.style.outline = '3px solid rgba(255, 107, 107, 0.8)';
+        video.style.borderRadius = '6px';
+        video.style.boxShadow = '0 0 20px rgba(255, 107, 107, 0.4)';
+
+        // Remove overlay and effects after a longer duration
+        const removeEffects = () => {
+            if (overlay.parentElement) {
+                overlay.remove();
+            }
+            video.classList.remove('pip-video-border-effect');
+            video.style.outline = '';
+            video.style.borderRadius = '';
+            video.style.boxShadow = '';
+        };
+
+        // Remove after 15 seconds or when video is clicked
+        setTimeout(removeEffects, 15000);
+
+        // Also remove on click
+        video.addEventListener('click', removeEffects, { once: true });
+    }
+})();
+)";
+}
+
+void PictureInPictureManager::executeVideoJavaScript(WebView *webView, const QString &script) {
+  if (!webView) {
+    qDebug() << "Cannot execute video JavaScript: WebView is null";
+    return;
+  }
+
+  webView->page()->runJavaScript(script, [this](const QVariant &result) {
+    qDebug() << "Video JavaScript execution result received";
+
+    QVariantMap resultMap = result.toMap();
+    qDebug() << "JavaScript result map:" << resultMap;
+
+    if (resultMap.contains("success") && resultMap["success"].toBool()) {
+      QString title = resultMap["title"].toString();
+      QString videoUrl = resultMap["videoUrl"].toString();
+
+      qDebug() << "Video PiP extraction successful:";
+      qDebug() << "  Title:" << title;
+      qDebug() << "  URL:" << videoUrl;
+      qDebug() << "  Width:" << resultMap["width"].toInt();
+      qDebug() << "  Height:" << resultMap["height"].toInt();
+      qDebug() << "  Ready State:" << resultMap["readyState"].toInt();
+
+      if (!videoUrl.isEmpty()) {
+        qDebug() << "PiP: Processing video URL:" << videoUrl << "with title:" << title;
+        createPiPFromVideoData(videoUrl, title);
+      } else {
+        qDebug() << "PiP: No video URL found in successful result";
+        createPiPFromVideoData("demo://test-video", "Test Video - 動画URLが見つかりませんでした");
+      }
+    } else {
+      QString errorMsg = resultMap["message"].toString();
+      qDebug() << "PiP: Video JavaScript execution failed or no videos found. Error:" << errorMsg;
+      createPiPFromVideoData("demo://test-video", "Test Video - 動画が見つかりませんでした");
+    }
+  });
+}
+
+void PictureInPictureManager::createPiPFromVideoData(const QString &videoData, const QString &title) {
+  MacOSPiPWindow *pipWindow = new MacOSPiPWindow();
+
+  // Check if videoData is Base64 or URL
+  if (videoData.startsWith("data:video/")) {
+    // Base64 video data
+    pipWindow->showVideoFromBase64(videoData, title);
+  } else {
+    // URL or other format
+    pipWindow->showVideo(videoData, title);
+  }
+
+  activePiPWindows.append(pipWindow);
+
+  // Clean up when window is destroyed
+  connect(pipWindow, &MacOSPiPWindow::destroyed, this, [this, pipWindow]() {
+    activePiPWindows.removeAll(pipWindow);
+  });
+
+  qDebug() << "Video PiP window created for:" << title;
 }
 
 void PictureInPictureManager::cleanupClosedPiPWindows() {

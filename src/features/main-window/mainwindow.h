@@ -121,7 +121,7 @@ private:
 
   // Placeholder for settings
 #ifdef DEBUG_MODE
-  QString homePageUrl = "file:///Users/user/Documents/03_app/mybrowser/tests/click_test.html";
+  QString homePageUrl = "file:///Users/user/Documents/03_app/mybrowser/tests/nspanel_fullscreen_test.html";
 #else
   QString homePageUrl = "https://www.google.com";
 #endif

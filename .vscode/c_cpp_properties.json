@@ -1,0 +1,21 @@
+{
+    "configurations": [
+        {
+            "name": "Mac",
+            "includePath": [
+                "${workspaceFolder}/**",
+                "/opt/homebrew/Cellar/qt/6.9.0/lib/**",
+                // "/opt/homebrew/Cellar/qt/6.9.0/lib/QtGui.framework/Versions/A/Headers",
+                // "/opt/homebrew/Cellar/qt/6.9.0/lib/QtWidgets.framework/Versions/A/Headers",
+                // "/opt/homebrew/Cellar/qt/6.9.0/lib/QtWebEngineCore.framework/Versions/A/Headers",
+                // "/opt/homebrew/Cellar/qt/6.9.0/lib/QtWebChannel.framework/Versions/A/Headers"
+            ],
+            "defines": [],
+            "compilerPath": "/usr/bin/clang",
+            "cStandard": "c17",
+            "cppStandard": "c++14",
+            "intelliSenseMode": "macos-clang-arm64"
+        }
+    ],
+    "version": 4
+}
