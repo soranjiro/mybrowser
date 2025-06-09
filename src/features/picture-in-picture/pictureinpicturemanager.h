@@ -11,9 +11,9 @@ class WebView;
 class MacOSPiPWindow;
 
 /**
- * @brief シンプルなPicture-in-Picture機能を管理するクラス
+ * @brief Simple Picture-in-Picture functionality manager
  *
- * macOS Spaces対応の独自PiP機能のみを提供
+ * Provides macOS Spaces compatible custom PiP functionality
  */
 class PictureInPictureManager : public QObject {
   Q_OBJECT
@@ -22,15 +22,15 @@ public:
   explicit PictureInPictureManager(MainWindow *parent = nullptr);
   ~PictureInPictureManager();
 
-  // アクションとメニューの設定
+  // Setup actions and menus
   void setupActions();
   void addToMenu(QMenu *viewMenu);
 
-  // PiP機能の実行（画像のみ）
+  // Execute PiP functionality (images only)
   void createImagePiP(WebView *webView = nullptr);
   void closeAllPiP();
 
-  // アクションの取得
+  // Get actions
   QAction *getImagePiPAction() const { return imagePiPAction; }
 
 private slots:

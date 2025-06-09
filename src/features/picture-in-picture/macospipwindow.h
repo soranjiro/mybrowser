@@ -7,7 +7,7 @@
 #include <QVBoxLayout>
 #include <QWidget>
 
-// 前方宣言
+// Forward declarations
 class QNetworkAccessManager;
 
 #ifdef Q_OS_MACOS
@@ -19,10 +19,10 @@ typedef struct objc_object NSPanel;
 #endif
 
 /**
- * @brief macOS Spaces対応のPicture-in-Picture ウィンドウ
+ * @brief macOS Spaces compatible Picture-in-Picture window
  *
- * NSWindowのcollectionBehaviorを使用して、
- * すべての仮想ワークスペース（Spaces）で表示される独自のPiPウィンドウ
+ * Uses NSWindow collectionBehavior to display on all virtual workspaces (Spaces)
+ * as an independent PiP window
  */
 class MacOSPiPWindow : public QWidget {
   Q_OBJECT
@@ -31,12 +31,12 @@ public:
   explicit MacOSPiPWindow(QWidget *parent = nullptr);
   ~MacOSPiPWindow();
 
-  // 画像を表示
+  // Display images
   void showImage(const QPixmap &pixmap, const QString &title = "");
   void showImageFromUrl(const QString &imageUrl, const QString &title = "");
 
 protected:
-  // マウスイベントでウィンドウを移動可能にする
+  // Enable window dragging with mouse events
   void mousePressEvent(QMouseEvent *event) override;
   void mouseMoveEvent(QMouseEvent *event) override;
   void mouseDoubleClickEvent(QMouseEvent *event) override;
@@ -46,21 +46,21 @@ private slots:
 
 private:
   void setupUI();
-  void setupMacOSBehavior();                      // macOS固有の設定
-  void showPlaceholderImage(const QString &text); // プレースホルダー画像表示
-  void applyMacOSSpacesSettings();                // Spaces設定を適用
+  void setupMacOSBehavior();                      // macOS specific settings
+  void showPlaceholderImage(const QString &text); // Display placeholder image
+  void applyMacOSSpacesSettings();                // Apply Spaces settings
 
   QVBoxLayout *layout;
   QLabel *imageLabel;
   QPushButton *closeButton;
-  QNetworkAccessManager *networkManager; // 画像読み込み用
+  QNetworkAccessManager *networkManager; // For image loading
 
-  // ウィンドウドラッグ用
+  // Window dragging
   QPoint dragStartPosition;
   bool isDragging;
 
 #ifdef Q_OS_MACOS
-  NSPanel *pipPanel; // フルスクリーン対応用NSPanel
+  NSPanel *pipPanel; // NSPanel for fullscreen support
 #endif
 };
 

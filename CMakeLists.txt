@@ -102,35 +102,3 @@ if(APPLE)
         "-framework Foundation"
     )
 endif()
-
-# Standalone PiP executable
-add_executable(PiPStandalone
-    src/features/picture-in-picture/pip_main.cpp
-    src/features/picture-in-picture/pip_standalone.cpp
-    src/features/picture-in-picture/pip_standalone.h
-)
-
-# Add macOS-specific Objective-C++ files for Standalone PiP
-if(APPLE)
-    target_sources(PiPStandalone PRIVATE
-        src/features/picture-in-picture/pip_standalone_macos.mm
-        src/features/picture-in-picture/pip_standalone_macos.h
-    )
-endif()
-
-target_link_libraries(PiPStandalone PRIVATE
-    Qt6::Widgets
-    Qt6::Network
-)
-
-# Add macOS-specific settings for standalone PiP
-if(APPLE)
-    target_link_libraries(PiPStandalone PRIVATE
-        "-framework Cocoa"
-        "-framework Foundation"
-    )
-endif()
-
-target_include_directories(PiPStandalone PRIVATE
-    src/features/picture-in-picture
-)
