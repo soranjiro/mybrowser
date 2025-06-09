@@ -1,0 +1,44 @@
+name: Build Release
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - "docs/**"
+      - "**/*.md"
+      - tests/**
+  pull_request:
+    branches: [main]
+    paths-ignore:
+      - "docs/**"
+      - "**/*.md"
+      - tests/**
+  workflow_dispatch:
+
+jobs:
+  build-release-macos:
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Qt6
+        run: |
+          brew install qt6
+          echo "/opt/homebrew/bin" >> $GITHUB_PATH
+          echo "Qt6_DIR=/opt/homebrew/lib/cmake/Qt6" >> $GITHUB_ENV
+
+      - name: Make build script executable
+        run: chmod +x scripts/build_release.sh
+
+      - name: Build release
+        run: ./scripts/build_release.sh
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: mybrowser-release-macos
+          path: build/MyBrowser
+          retention-days: 30
