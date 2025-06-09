@@ -696,61 +696,108 @@ void WebView::showDevTools() {
 }
 
 void WebView::requestPictureInPicture() {
-  // Use the same JavaScript as in MainWindow but with direct execution
+  // Use our custom PiP system through the pipVideoRequested signal
   QString script = R"(
     (function() {
-      var videos = document.querySelectorAll('video');
-      if (videos.length === 0) {
-        alert('このページに動画が見つかりません');
-        return;
+      let targetVideo = null;
+      let targetContainer = null;
+
+      // Find hovered or focused videos first
+      const activeVideos = document.querySelectorAll('video:hover, video:focus, video:active');
+      if (activeVideos.length > 0) {
+          targetVideo = activeVideos[0];
+          targetContainer = targetVideo.closest('.video-item') || targetVideo.parentElement;
       }
 
-      // Find the first video that is playing or can be played
-      var targetVideo = null;
-      for (var i = 0; i < videos.length; i++) {
-        var video = videos[i];
-        if (!video.paused || video.readyState >= 2) {
-          targetVideo = video;
-          break;
-        }
-      }
-
-      if (!targetVideo && videos.length > 0) {
-        targetVideo = videos[0]; // Fallback to first video
-      }
-
+      // Otherwise find largest visible video
       if (!targetVideo) {
-        alert('ピクチャーインピクチャーに適した動画が見つかりません');
-        return;
+          const videos = document.querySelectorAll('video');
+          let bestVideo = null;
+          let maxArea = 0;
+
+          for (let video of videos) {
+              const rect = video.getBoundingClientRect();
+              if (rect.width >= 100 && rect.height >= 50 && video.readyState >= 2) {
+                  const area = rect.width * rect.height;
+                  if (area > maxArea) {
+                      maxArea = area;
+                      bestVideo = video;
+                  }
+              }
+          }
+          targetVideo = bestVideo;
+          if (targetVideo) {
+              targetContainer = targetVideo.closest('.video-item') || targetVideo.parentElement;
+          }
       }
 
-      // Check if Picture-in-Picture is supported
-      if (!document.pictureInPictureEnabled || !targetVideo.requestPictureInPicture) {
-        alert('ピクチャーインピクチャーはこのページまたはブラウザでサポートされていません');
-        return;
+      if (targetVideo) {
+          // Try multiple ways to get video URL
+          let videoUrl = targetVideo.src || targetVideo.currentSrc;
+
+          // If no direct URL, check source elements
+          if (!videoUrl || videoUrl === '') {
+              const sources = targetVideo.querySelectorAll('source');
+              for (let source of sources) {
+                  if (source.src) {
+                      videoUrl = source.src;
+                      break;
+                  }
+              }
+          }
+
+          // If still no URL, check data attributes
+          if (!videoUrl || videoUrl === '') {
+              videoUrl = targetVideo.getAttribute('data-src') ||
+                        targetVideo.getAttribute('data-url') ||
+                        targetContainer?.getAttribute('data-url') || '';
+          }
+
+          const title = targetVideo.title ||
+                       targetVideo.getAttribute('alt') ||
+                       targetContainer?.querySelector('h1, h2, h3, .video-overlay, .title')?.textContent ||
+                       'Selected Video';
+
+          const result = {
+              success: true,
+              videoUrl: videoUrl,
+              title: title,
+              width: targetVideo.getBoundingClientRect().width,
+              height: targetVideo.getBoundingClientRect().height,
+              duration: targetVideo.duration,
+              currentTime: targetVideo.currentTime,
+              paused: targetVideo.paused,
+              readyState: targetVideo.readyState
+          };
+
+          console.log('WebView PiP: Video found and processed:', result);
+          return result;
       }
 
-      // Check if already in Picture-in-Picture
-      if (document.pictureInPictureElement) {
-        document.exitPictureInPicture().then(function() {
-          console.log('ピクチャーインピクチャーモードを終了しました');
-        }).catch(function(error) {
-          console.error('ピクチャーインピクチャー終了エラー:', error);
-          alert('ピクチャーインピクチャーの終了に失敗しました: ' + error.message);
-        });
-      } else {
-        // Enter Picture-in-Picture
-        targetVideo.requestPictureInPicture().then(function() {
-          console.log('ピクチャーインピクチャーモードに入りました');
-        }).catch(function(error) {
-          console.error('ピクチャーインピクチャー開始エラー:', error);
-          alert('ピクチャーインピクチャーの開始に失敗しました: ' + error.message);
-        });
-      }
+      return { success: false, message: 'No suitable videos found' };
     })();
   )";
 
-  page()->runJavaScript(script);
+  page()->runJavaScript(script, [this](const QVariant &result) {
+    QVariantMap resultMap = result.toMap();
+    qDebug() << "WebView PiP: JavaScript result:" << resultMap;
+
+    if (resultMap.contains("success") && resultMap["success"].toBool()) {
+      QString videoUrl = resultMap["videoUrl"].toString();
+      QString title = resultMap["title"].toString();
+
+      qDebug() << "WebView PiP: Emitting pipVideoRequested signal with URL:" << videoUrl << "Title:" << title;
+
+      // Emit the signal that PictureInPictureManager is listening for
+      emit pipVideoRequested(videoUrl, title);
+    } else {
+      QString errorMsg = resultMap["message"].toString();
+      qDebug() << "WebView PiP: No video found or error:" << errorMsg;
+
+      // Emit signal with demo video to show placeholder
+      emit pipVideoRequested("demo://test-video", "Test Video - 動画が見つかりませんでした");
+    }
+  });
 }
 
 void WebView::keyPressEvent(QKeyEvent *event) {
@@ -955,4 +1002,14 @@ void WebView::handleSwipeForward() {
   if (page() && page()->history()->canGoForward()) {
     page()->history()->forward();
   }
+}
+
+void WebView::handlePipImageSelection(const QString &imageUrl, const QString &title) {
+  qDebug() << "WebView: PiP image selection handled:" << title << imageUrl;
+  emit pipImageRequested(imageUrl, title);
+}
+
+void WebView::handlePipVideoSelection(const QString &videoUrl, const QString &title) {
+  qDebug() << "WebView: PiP video selection handled:" << title << videoUrl;
+  emit pipVideoRequested(videoUrl, title);
 }

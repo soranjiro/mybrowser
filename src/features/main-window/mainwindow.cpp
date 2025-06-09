@@ -201,6 +201,13 @@ void MainWindow::createActions() {
   // Setup manager actions
   if (pictureInPictureManager) {
     pictureInPictureManager->setupActions();
+
+    // Add PiP action to MainWindow for global shortcut
+    QAction *imagePiPAction = pictureInPictureManager->getImagePiPAction();
+    if (imagePiPAction) {
+      this->addAction(imagePiPAction);
+      qDebug() << "PiP action added with shortcut:" << imagePiPAction->shortcut().toString();
+    }
   }
   if (commandPaletteManager) {
     qDebug() << "Setting up command palette manager actions...";
@@ -360,35 +367,49 @@ void MainWindow::createMenus() {
   // Add debug menu for easy access to test pages
   QMenu *debugMenu = menuBar()->addMenu("&Debug");
 
-  QAction *openVideoTestAction = debugMenu->addAction("Video Test Page");
-  connect(openVideoTestAction, &QAction::triggered, this, [this]() {
-    openTestPage("video_test.html");
-  });
+  // Dynamically list and add test page actions
+  QString appDir = QCoreApplication::applicationDirPath();
+  QDir projectDir(appDir);
 
-  QAction *openPiPTestAction = debugMenu->addAction("PiP Test Page");
-  connect(openPiPTestAction, &QAction::triggered, this, [this]() {
-    openTestPage("pip_test.html");
-  });
+  // Find the project root directory (where tests folder exists)
+  while (!projectDir.exists("tests") && projectDir.cdUp()) {
+    // Move to parent directory
+  }
 
-  QAction *openPiPIntegrationTestAction = debugMenu->addAction("PiP Integration Test");
-  connect(openPiPIntegrationTestAction, &QAction::triggered, this, [this]() {
-    openTestPage("pip_integration_test.html");
-  });
+  if (projectDir.exists("tests")) {
+    QDir testsDir(projectDir.absoluteFilePath("tests"));
+    QStringList testFiles = testsDir.entryList(QStringList() << "*.html", QDir::Files | QDir::Readable);
 
-  QAction *openDebugTestAction = debugMenu->addAction("Debug Test Page");
-  connect(openDebugTestAction, &QAction::triggered, this, [this]() {
-    openTestPage("debug_test.html");
-  });
+    if (!testFiles.isEmpty()) {
+      QMenu *testPagesMenu = debugMenu->addMenu("Test Pages");
+
+      for (const QString &fileName : testFiles) {
+        QString baseName = QFileInfo(fileName).baseName();
+        QString displayName = baseName.replace('_', ' ').replace('-', ' ');
+        // Capitalize first letter of each word
+        QStringList words = displayName.split(' ');
+        for (QString &word : words) {
+          if (!word.isEmpty()) {
+            word[0] = word[0].toUpper();
+          }
+        }
+        displayName = words.join(' ');
+
+        QAction *testAction = testPagesMenu->addAction(displayName);
+        connect(testAction, &QAction::triggered, this, [this, fileName]() {
+          openTestPage(fileName);
+        });
+      }
+    } else {
+      QAction *noTestsAction = debugMenu->addAction("No Test Files Found");
+      noTestsAction->setEnabled(false);
+    }
+  } else {
+    QAction *noTestsDirAction = debugMenu->addAction("Tests Directory Not Found");
+    noTestsDirAction->setEnabled(false);
+  }
 
   debugMenu->addSeparator();
-
-  QAction *openTestsDirectoryAction = debugMenu->addAction("Open Tests Directory");
-  connect(openTestsDirectoryAction, &QAction::triggered, this, [this]() {
-    if (WebView *view = currentWebView()) {
-      QString testsPath = QDir::currentPath() + "/tests/";
-      view->load(QUrl::fromLocalFile(testsPath));
-    }
-  });
 #endif
 
   // Add keyboard shortcuts for command palette actions
@@ -484,11 +505,6 @@ void MainWindow::newTab() {
     if (ok) {
       history.prepend({webView->title(), webView->url()});
       // Limit history size if needed
-
-      // 自動的にすべての動画をPicture-in-Picture対応にする
-      if (pictureInPictureManager) {
-        pictureInPictureManager->enablePiPForAllVideos(webView);
-      }
     }
     backAction->setEnabled(webView->page()->history()->canGoBack());
     forwardAction->setEnabled(webView->page()->history()->canGoForward());
@@ -670,11 +686,6 @@ void MainWindow::handleContextMenuRequested(const QPoint &pos) {
   webAction = QWebEnginePage::SelectAll;
   contextMenu.addAction(view->page()->action(webAction));
   contextMenu.addSeparator();
-
-  // Add manager context menu actions
-  if (pictureInPictureManager) {
-    pictureInPictureManager->addToContextMenu(&contextMenu);
-  }
 
   contextMenu.exec(view->mapToGlobal(pos));
 }

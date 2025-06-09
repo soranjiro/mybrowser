@@ -65,6 +65,14 @@ signals:
   void loadProgress(int progress);
   void loadFinished(bool ok);
   void loadStarted();
+
+  // PiP related signals
+  void pipImageRequested(const QString &imageUrl, const QString &title);
+  void pipVideoRequested(const QString &videoUrl, const QString &title);
+
+public slots:
+  void handlePipImageSelection(const QString &imageUrl, const QString &title);
+  void handlePipVideoSelection(const QString &videoUrl, const QString &title);
 };
 
 #endif // WEBVIEW_H

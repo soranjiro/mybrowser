@@ -2,20 +2,18 @@
 #define PICTUREINPICTUREMANAGER_H
 
 #include <QAction>
+#include <QList>
 #include <QMenu>
 #include <QObject>
 
 class MainWindow;
 class WebView;
+class MacOSPiPWindow;
 
 /**
- * @brief Picture-in-Picture機能を管理するクラス
+ * @brief Simple Picture-in-Picture functionality manager
  *
- * このクラスは以下の機能を提供します：
- * - PiPアクションの作成と管理
- * - キーボードショートカットの設定
- * - メニュー項目の追加
- * - WebViewでのPiP機能実行
+ * Provides macOS Spaces compatible custom PiP functionality
  */
 class PictureInPictureManager : public QObject {
   Q_OBJECT
@@ -24,36 +22,44 @@ public:
   explicit PictureInPictureManager(MainWindow *parent = nullptr);
   ~PictureInPictureManager();
 
-  // アクションとメニューの設定
+  // Setup actions and menus
   void setupActions();
   void addToMenu(QMenu *viewMenu);
-  void addToContextMenu(QMenu *contextMenu);
 
-  // PiP機能の実行
-  void togglePictureInPicture(WebView *webView = nullptr);
-  void requestPictureInPicture(WebView *webView = nullptr);
-  void exitPictureInPicture(WebView *webView = nullptr);
-  void enablePiPForAllVideos(WebView *webView = nullptr);
+  // Execute PiP functionality
+  void createImagePiP(WebView *webView = nullptr);
+  void createVideoPiP(WebView *webView = nullptr);
+  void closeAllPiP();
 
-  // アクションの取得
-  QAction *getPictureInPictureAction() const { return pictureInPictureAction; }
+  // Get actions
+  QAction *getImagePiPAction() const { return imagePiPAction; }
+  QAction *getVideoPiPAction() const { return videoPiPAction; }
 
 private slots:
-  void onTogglePictureInPicture();
+  void onImagePiPTriggered();
+  void onVideoPiPTriggered();
 
 private:
   MainWindow *mainWindow;
-  QAction *pictureInPictureAction;
-  QAction *contextMenuAction;
+  QAction *imagePiPAction;
+  QAction *videoPiPAction;
+
+  // PiPウィンドウ管理
+  QList<MacOSPiPWindow *> activePiPWindows;
 
   // JavaScript生成メソッド
-  QString generatePiPJavaScript() const;
-  QString generatePiPDetectionScript() const;
-  QString loadResourceFile(const QString &resourcePath) const;
-  QString generatePiPToggleScript() const;
+  QString generateImageExtractionScript() const;
+  QString generateVideoExtractionScript() const;
+  QString getEnhancedPiPScript() const;
 
   // WebViewでのJavaScript実行
   void executeJavaScript(WebView *webView, const QString &script);
+  void executeVideoJavaScript(WebView *webView, const QString &script);
+
+  // PiP用ヘルパーメソッド
+  void createPiPFromImageData(const QString &imageData, const QString &title);
+  void createPiPFromVideoData(const QString &videoData, const QString &title);
+  void cleanupClosedPiPWindows();
 };
 
 #endif // PICTUREINPICTUREMANAGER_H

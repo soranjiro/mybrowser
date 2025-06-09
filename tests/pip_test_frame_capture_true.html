@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>真のフレームキャプチャテスト</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        margin: 20px;
+        background: #f0f0f0;
+      }
+      .video-container {
+        margin: 20px 0;
+        padding: 20px;
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      }
+      video {
+        width: 400px;
+        height: 200px;
+        border: 2px solid #333;
+      }
+      .disabled-video {
+        border-color: red;
+      }
+      .description {
+        margin-top: 10px;
+        font-weight: bold;
+        color: #333;
+      }
+      .note {
+        margin: 10px 0;
+        padding: 10px;
+        background: #ffffcc;
+        border-left: 4px solid #ffeb3b;
+      }
+      button {
+        margin: 5px;
+        padding: 10px 20px;
+        background: #007bff;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+      }
+      button:hover {
+        background: #0056b3;
+      }
+      .status {
+        margin: 10px 0;
+        padding: 10px;
+        background: #e7f3ff;
+        border-left: 4px solid #2196f3;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>真のフレームキャプチャテスト - PiP属性削除を防止</h1>
+
+    <div class="note">
+      <strong>テスト目的:</strong>
+      実際にdisablepictureinpicture属性が保持された状態でフレームキャプチャ機能をテストします。<br />
+      <strong>操作方法:</strong>
+      <ol>
+        <li>「自動削除を防止」ボタンをクリック</li>
+        <li>赤い枠の動画をクリックして選択</li>
+        <li>Ctrl+Alt+Vを押してフレームキャプチャを実行</li>
+      </ol>
+    </div>
+
+    <div class="status" id="status"><strong>ステータス:</strong> 初期状態</div>
+
+    <div style="margin: 20px 0">
+      <button onclick="preventPiPRemoval()">自動削除を防止</button>
+      <button onclick="testFrameCapture()">手動フレームキャプチャテスト</button>
+      <button onclick="checkVideoStatus()">動画ステータス確認</button>
+      <button onclick="restoreVideoAttributes()">属性を復元</button>
+    </div>
+
+    <div class="video-container">
+      <h3>通常の動画（PiP対応）</h3>
+      <video id="normalVideo" controls autoplay muted loop>
+        <source
+          src="https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4"
+          type="video/mp4"
+        />
+      </video>
+      <div class="description">この動画は通常のPiP動作をします</div>
+    </div>
+
+    <div class="video-container">
+      <h3>disablepictureinpicture属性付き動画（フレームキャプチャ対象）</h3>
+      <video
+        id="disabledVideo"
+        class="disabled-video"
+        controls
+        autoplay
+        muted
+        loop
+        disablepictureinpicture
+      >
+        <source
+          src="https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4"
+          type="video/mp4"
+        />
+      </video>
+      <div class="description" style="color: red">
+        この動画はdisablepictureinpicture属性があり、フレームキャプチャが動作するはずです
+      </div>
+    </div>
+
+    <div class="video-container">
+      <h3>強制的にPiP無効化された動画</h3>
+      <video
+        id="forcedDisabledVideo"
+        class="disabled-video"
+        controls
+        muted
+        loop
+      >
+        <source
+          src="https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4"
+          type="video/mp4"
+        />
+      </video>
+      <div class="description" style="color: red">
+        この動画は手動でdisablepictureinpicture属性を追加
+      </div>
+    </div>
+
+    <canvas
+      id="testCanvas"
+      width="400"
+      height="200"
+      style="border: 1px solid #ccc; display: none; margin: 20px 0"
+    ></canvas>
+
+    <script>
+      let selectedVideo = null;
+      let preventionActive = false;
+      const originalSetAttribute = Element.prototype.setAttribute;
+      const originalRemoveAttribute = Element.prototype.removeAttribute;
+
+      // 動画をクリックで選択
+      document.querySelectorAll("video").forEach((video) => {
+        video.addEventListener("click", function () {
+          // 他の動画の選択を解除
+          document.querySelectorAll("video").forEach((v) => {
+            v.style.outline = "";
+          });
+          // 選択した動画にハイライト
+          this.style.outline = "3px solid blue";
+          selectedVideo = this;
+          updateStatus(`動画が選択されました: ${this.id}`);
+          console.log("動画が選択されました:", this.src || this.currentSrc);
+        });
+      });
+
+      // PiP属性削除を防止するための関数
+      function preventPiPRemoval() {
+        if (preventionActive) {
+          updateStatus("既に削除防止が有効です");
+          return;
+        }
+
+        console.log("PiP属性削除防止を設定します");
+
+        // setAttributeをオーバーライド
+        Element.prototype.setAttribute = function (name, value) {
+          if (name === "disablepictureinpicture" && this.tagName === "VIDEO") {
+            console.log(
+              "disablepictureinpicture属性の削除を防止しました (setAttribute)"
+            );
+            updateStatus("setAttribute での削除を防止しました");
+            return;
+          }
+          return originalSetAttribute.call(this, name, value);
+        };
+
+        // removeAttributeをオーバーライド
+        Element.prototype.removeAttribute = function (name) {
+          if (name === "disablepictureinpicture" && this.tagName === "VIDEO") {
+            console.log(
+              "disablepictureinpicture属性の削除を防止しました (removeAttribute)"
+            );
+            updateStatus("removeAttribute での削除を防止しました");
+            return;
+          }
+          return originalRemoveAttribute.call(this, name);
+        };
+
+        // disablePictureInPictureプロパティの設定を防止
+        document.querySelectorAll("video").forEach((video) => {
+          const desc = Object.getOwnPropertyDescriptor(
+            video,
+            "disablePictureInPicture"
+          );
+          if (!desc || desc.configurable) {
+            Object.defineProperty(video, "disablePictureInPicture", {
+              get: function () {
+                return this.hasAttribute("disablepictureinpicture");
+              },
+              set: function (value) {
+                console.log(
+                  "disablePictureInPicture プロパティ設定を防止しました:",
+                  value
+                );
+                updateStatus("disablePictureInPicture プロパティ設定を防止");
+                // 設定を無視
+              },
+              configurable: false,
+            });
+          }
+        });
+
+        // 強制的にdisablepictureinpicture属性を追加
+        const forcedVideo = document.getElementById("forcedDisabledVideo");
+        if (forcedVideo) {
+          // 一時的に元の setAttribute を使用
+          originalSetAttribute.call(forcedVideo, "disablepictureinpicture", "");
+          console.log("強制的にdisablepictureinpicture属性を追加しました");
+        }
+
+        preventionActive = true;
+        updateStatus(
+          "PiP属性削除防止が設定されました - 全ての削除試行がブロックされます"
+        );
+      }
+
+      // 手動フレームキャプチャテスト
+      function testFrameCapture() {
+        if (!selectedVideo) {
+          updateStatus("まず動画を選択してください");
+          return;
+        }
+
+        const canvas = document.getElementById("testCanvas");
+        const ctx = canvas.getContext("2d");
+
+        try {
+          // 動画の現在フレームをキャンバスに描画
+          ctx.drawImage(selectedVideo, 0, 0, canvas.width, canvas.height);
+
+          // Base64データとして取得
+          const frameData = canvas.toDataURL("image/png");
+          console.log(
+            "フレームキャプチャ成功:",
+            frameData.substring(0, 100) + "..."
+          );
+
+          // キャンバスを表示
+          canvas.style.display = "block";
+
+          updateStatus(
+            `フレームキャプチャが成功しました！ (${selectedVideo.id})`
+          );
+        } catch (error) {
+          console.error("フレームキャプチャエラー:", error);
+          updateStatus(`フレームキャプチャに失敗しました: ${error.message}`);
+        }
+      }
+
+      // 動画ステータス確認
+      function checkVideoStatus() {
+        const videos = document.querySelectorAll("video");
+        let statusText = "動画ステータス:\n";
+
+        videos.forEach((video, index) => {
+          const hasAttr = video.hasAttribute("disablepictureinpicture");
+          const propValue = video.disablePictureInPicture;
+          statusText += `${
+            video.id || `Video ${index + 1}`
+          }: attribute=${hasAttr}, property=${propValue}\n`;
+        });
+
+        console.log(statusText);
+        updateStatus(statusText.replace(/\n/g, "<br>"));
+      }
+
+      // 属性を復元
+      function restoreVideoAttributes() {
+        // 元のメソッドに戻す
+        Element.prototype.setAttribute = originalSetAttribute;
+        Element.prototype.removeAttribute = originalRemoveAttribute;
+
+        // 全ての動画にdisablepictureinpicture属性を再設定
+        document.querySelectorAll("video").forEach((video) => {
+          if (video.classList.contains("disabled-video")) {
+            video.setAttribute("disablepictureinpicture", "");
+          }
+        });
+
+        preventionActive = false;
+        updateStatus("属性が復元されました - 通常の動作に戻ります");
+      }
+
+      // ステータス更新
+      function updateStatus(message) {
+        const statusDiv = document.getElementById("status");
+        statusDiv.innerHTML = `<strong>ステータス:</strong> ${message}`;
+        console.log("Status:", message);
+      }
+
+      // ページ読み込み完了時
+      window.addEventListener("load", function () {
+        console.log("真のフレームキャプチャテストページ読み込み完了");
+        updateStatus(
+          "ページが読み込まれました - 「自動削除を防止」ボタンをクリックしてテストを開始してください"
+        );
+
+        // 初期ステータス確認
+        setTimeout(checkVideoStatus, 1000);
+      });
+
+      // WebViewの自動削除スクリプトを無効化する試み
+      window.addEventListener("DOMContentLoaded", function () {
+        // MutationObserverで自動削除を監視・防止
+        const observer = new MutationObserver(function (mutations) {
+          if (!preventionActive) return;
+
+          mutations.forEach(function (mutation) {
+            if (
+              mutation.type === "attributes" &&
+              mutation.attributeName === "disablepictureinpicture"
+            ) {
+              const target = mutation.target;
+              if (
+                target.tagName === "VIDEO" &&
+                !target.hasAttribute("disablepictureinpicture")
+              ) {
+                console.log(
+                  "MutationObserver: disablepictureinpicture属性の削除を検出 - 復元中"
+                );
+                originalSetAttribute.call(
+                  target,
+                  "disablepictureinpicture",
+                  ""
+                );
+                updateStatus("MutationObserver: 属性削除を検出し復元しました");
+              }
+            }
+          });
+        });
+
+        // 監視開始
+        document.querySelectorAll("video").forEach((video) => {
+          observer.observe(video, {
+            attributes: true,
+            attributeFilter: ["disablepictureinpicture"],
+          });
+        });
+      });
+    </script>
+  </body>
+</html>

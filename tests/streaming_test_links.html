@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ストリーミングサイト PiP テストリンク</title>
+    <style>
+      body {
+        font-family: "Arial", sans-serif;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        margin: 0;
+        padding: 20px;
+        min-height: 100vh;
+      }
+
+      .container {
+        max-width: 800px;
+        margin: 0 auto;
+        background: rgba(255, 255, 255, 0.95);
+        border-radius: 15px;
+        padding: 30px;
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+      }
+
+      h1 {
+        text-align: center;
+        color: #333;
+        margin-bottom: 30px;
+        font-size: 2.5em;
+        font-weight: 300;
+      }
+
+      .test-section {
+        margin-bottom: 40px;
+        padding: 25px;
+        background: #f8f9fa;
+        border-radius: 10px;
+        border-left: 5px solid #007bff;
+      }
+
+      .test-section h2 {
+        color: #333;
+        margin-bottom: 20px;
+        font-size: 1.5em;
+      }
+
+      .link-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 15px;
+        margin-bottom: 20px;
+      }
+
+      .test-link {
+        display: block;
+        padding: 15px 20px;
+        background: linear-gradient(135deg, #ff6b6b, #ee5a24);
+        color: white;
+        text-decoration: none;
+        border-radius: 8px;
+        transition: all 0.3s ease;
+        text-align: center;
+        font-weight: 500;
+      }
+
+      .test-link:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+      }
+
+      .youtube-link {
+        background: linear-gradient(135deg, #ff0000, #cc0000);
+      }
+
+      .tver-link {
+        background: linear-gradient(135deg, #00a8cc, #0077aa);
+      }
+
+      .instructions {
+        background: #e8f4fd;
+        padding: 20px;
+        border-radius: 8px;
+        border-left: 4px solid #2196f3;
+        margin-bottom: 20px;
+      }
+
+      .instructions h3 {
+        margin-top: 0;
+        color: #1976d2;
+      }
+
+      .instructions ol {
+        margin: 10px 0;
+        padding-left: 20px;
+      }
+
+      .instructions li {
+        margin-bottom: 8px;
+        line-height: 1.5;
+      }
+
+      .debug-section {
+        background: #fff3cd;
+        border: 1px solid #ffeaa7;
+        border-radius: 8px;
+        padding: 20px;
+        margin-top: 30px;
+      }
+
+      .debug-section h3 {
+        color: #856404;
+        margin-top: 0;
+      }
+
+      .debug-button {
+        display: inline-block;
+        padding: 10px 20px;
+        background: #ffc107;
+        color: #212529;
+        text-decoration: none;
+        border-radius: 5px;
+        margin: 5px;
+        transition: background 0.3s ease;
+        font-weight: 500;
+      }
+
+      .debug-button:hover {
+        background: #e0a800;
+      }
+
+      .keyboard-shortcuts {
+        background: #d4edda;
+        border: 1px solid #c3e6cb;
+        border-radius: 8px;
+        padding: 20px;
+        margin-top: 20px;
+      }
+
+      .keyboard-shortcuts h3 {
+        color: #155724;
+        margin-top: 0;
+      }
+
+      .shortcut-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 8px 0;
+        border-bottom: 1px solid #c3e6cb;
+      }
+
+      .shortcut-item:last-child {
+        border-bottom: none;
+      }
+
+      .shortcut-key {
+        background: #28a745;
+        color: white;
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-family: monospace;
+        font-size: 0.9em;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>🎥 ストリーミングサイト PiP テスト</h1>
+
+      <div class="instructions">
+        <h3>📋 テスト手順</h3>
+        <ol>
+          <li>下記のリンクをクリックして各ストリーミングサイトにアクセス</li>
+          <li>動画を再生開始</li>
+          <li>
+            キーボードショートカット <strong>Ctrl+P</strong> (macOS: Cmd+P)
+            でPiP機能を実行
+          </li>
+          <li>PiPウィンドウが正しく開くかを確認</li>
+          <li>問題がある場合は、デバッグ情報を確認</li>
+        </ol>
+      </div>
+
+      <div class="test-section">
+        <h2>🔴 YouTube テスト</h2>
+        <div class="link-grid">
+          <a
+            href="https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+            class="test-link youtube-link"
+            target="_blank"
+          >
+            YouTube - 一般的な動画
+          </a>
+          <a
+            href="https://www.youtube.com/watch?v=jNQXAC9IVRw"
+            class="test-link youtube-link"
+            target="_blank"
+          >
+            YouTube - 短い動画
+          </a>
+          <a
+            href="https://www.youtube.com/watch?v=9bZkp7q19f0"
+            class="test-link youtube-link"
+            target="_blank"
+          >
+            YouTube - 長時間動画
+          </a>
+        </div>
+      </div>
+
+      <div class="test-section">
+        <h2>📺 TVar テスト</h2>
+        <div class="link-grid">
+          <a
+            href="https://tver.jp/"
+            class="test-link tver-link"
+            target="_blank"
+          >
+            TVar - ホームページ
+          </a>
+          <a
+            href="https://tver.jp/episodes/602d7e7d35f4b73a8a5c92c8"
+            class="test-link tver-link"
+            target="_blank"
+          >
+            TVar - サンプル番組1
+          </a>
+          <a
+            href="https://tver.jp/corner/f0089694"
+            class="test-link tver-link"
+            target="_blank"
+          >
+            TVar - サンプル番組2
+          </a>
+        </div>
+      </div>
+
+      <div class="test-section">
+        <h2>🌐 その他のストリーミングサイト</h2>
+        <div class="link-grid">
+          <a href="https://www.netflix.com/" class="test-link" target="_blank">
+            Netflix
+          </a>
+          <a
+            href="https://www.amazon.co.jp/gp/video/"
+            class="test-link"
+            target="_blank"
+          >
+            Amazon Prime Video
+          </a>
+          <a href="https://www.hulu.jp/" class="test-link" target="_blank">
+            Hulu
+          </a>
+        </div>
+      </div>
+
+      <div class="keyboard-shortcuts">
+        <h3>⌨️ キーボードショートカット</h3>
+        <div class="shortcut-item">
+          <span>PiP機能実行</span>
+          <span class="shortcut-key">Ctrl+P / Cmd+P</span>
+        </div>
+        <div class="shortcut-item">
+          <span>全PiPウィンドウ終了</span>
+          <span class="shortcut-key">Ctrl+Shift+P</span>
+        </div>
+        <div class="shortcut-item">
+          <span>デバッグ情報表示</span>
+          <span class="shortcut-key">Ctrl+Alt+P</span>
+        </div>
+      </div>
+
+      <div class="debug-section">
+        <h3>🔧 デバッグ機能</h3>
+        <p>
+          PiP機能がうまく動作しない場合、以下のデバッグ機能を使用してください：
+        </p>
+        <a
+          href="javascript:void(0)"
+          class="debug-button"
+          onclick="showDebugInfo()"
+          >デバッグ情報表示</a
+        >
+        <a
+          href="javascript:void(0)"
+          class="debug-button"
+          onclick="testVideoDetection()"
+          >動画検出テスト</a
+        >
+        <a href="javascript:void(0)" class="debug-button" onclick="exitAllPiP()"
+          >全PiP終了</a
+        >
+        <a
+          href="javascript:void(0)"
+          class="debug-button"
+          onclick="monitorPerformance()"
+          >パフォーマンス監視</a
+        >
+      </div>
+    </div>
+
+    <script>
+      // デバッグ機能
+      function showDebugInfo() {
+        if (typeof window.showPiPDebugInfo === "function") {
+          window.showPiPDebugInfo();
+        } else {
+          alert(
+            "PiPデバッグ機能が利用できません。ページを読み込み直してください。"
+          );
+        }
+      }
+
+      function testVideoDetection() {
+        const videos = document.querySelectorAll("video");
+        let debugInfo = `検出された動画要素: ${videos.length}個\n\n`;
+
+        videos.forEach((video, index) => {
+          debugInfo += `動画 ${index + 1}:\n`;
+          debugInfo += `- src: ${video.src || "なし"}\n`;
+          debugInfo += `- currentSrc: ${video.currentSrc || "なし"}\n`;
+          debugInfo += `- readyState: ${video.readyState}\n`;
+          debugInfo += `- paused: ${video.paused}\n`;
+          debugInfo += `- muted: ${video.muted}\n`;
+          debugInfo += `- disablePictureInPicture: ${video.disablePictureInPicture}\n`;
+          debugInfo += `- サイズ: ${video.videoWidth}x${video.videoHeight}\n`;
+          debugInfo += `- 可視性: ${
+            video.offsetWidth > 0 && video.offsetHeight > 0
+          }\n\n`;
+        });
+
+        alert(debugInfo);
+      }
+
+      function exitAllPiP() {
+        if (typeof window.exitAllPiP === "function") {
+          window.exitAllPiP();
+          alert("全てのPiPウィンドウを終了しました。");
+        } else {
+          alert("PiP終了機能が利用できません。");
+        }
+      }
+
+      function monitorPerformance() {
+        if (typeof window.monitorPiPPerformance === "function") {
+          window.monitorPiPPerformance();
+          alert(
+            "パフォーマンス監視を開始しました。コンソールをご確認ください。"
+          );
+        } else {
+          alert("パフォーマンス監視機能が利用できません。");
+        }
+      }
+
+      // ページ読み込み時の初期化
+      document.addEventListener("DOMContentLoaded", function () {
+        console.log("ストリーミングサイト PiP テストページが読み込まれました");
+        console.log("利用可能なデバッグ機能:");
+        console.log("- showPiPDebugInfo()", typeof window.showPiPDebugInfo);
+        console.log("- exitAllPiP()", typeof window.exitAllPiP);
+        console.log(
+          "- monitorPiPPerformance()",
+          typeof window.monitorPiPPerformance
+        );
+      });
+    </script>
+  </body>
+</html>

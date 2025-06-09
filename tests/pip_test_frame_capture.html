@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>フレームキャプチャテスト</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        margin: 20px;
+        background: #f0f0f0;
+      }
+      .video-container {
+        margin: 20px 0;
+        padding: 20px;
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      }
+      video {
+        width: 400px;
+        height: 200px;
+        border: 2px solid #333;
+      }
+      .disabled-video {
+        border-color: red;
+      }
+      .description {
+        margin-top: 10px;
+        font-weight: bold;
+        color: #333;
+      }
+      .note {
+        margin: 10px 0;
+        padding: 10px;
+        background: #ffffcc;
+        border-left: 4px solid #ffeb3b;
+      }
+      button {
+        margin: 5px;
+        padding: 10px 20px;
+        background: #007bff;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+      }
+      button:hover {
+        background: #0056b3;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>フレームキャプチャテスト - disablepictureinpicture属性</h1>
+
+    <div class="note">
+      <strong>テスト目的:</strong>
+      disablepictureinpicture属性を持つ動画でフレームキャプチャ機能をテストします。<br />
+      <strong>操作方法:</strong>
+      赤い枠の動画をクリックして選択し、Ctrl+Alt+Vを押してください。
+    </div>
+
+    <div class="video-container">
+      <h3>通常の動画（PiP対応）</h3>
+      <video controls autoplay muted loop>
+        <source
+          src="https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4"
+          type="video/mp4"
+        />
+      </video>
+      <div class="description">この動画は通常のPiP動作をします</div>
+    </div>
+
+    <div class="video-container">
+      <h3>disablepictureinpicture属性付き動画（フレームキャプチャ対象）</h3>
+      <video
+        id="disabledVideo"
+        class="disabled-video"
+        controls
+        autoplay
+        muted
+        loop
+        disablepictureinpicture
+      >
+        <source
+          src="https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4"
+          type="video/mp4"
+        />
+      </video>
+      <div class="description" style="color: red">
+        この動画はdisablepictureinpicture属性があり、フレームキャプチャが動作するはずです
+      </div>
+    </div>
+
+    <div class="video-container">
+      <h3>URLアクセス不可動画（フレームキャプチャ対象）</h3>
+      <video
+        id="blobVideo"
+        class="disabled-video"
+        controls
+        muted
+        loop
+        disablepictureinpicture
+      >
+        <!-- BlobURLで動画を設定 -->
+      </video>
+      <div class="description" style="color: red">
+        この動画はBlobURLでフレームキャプチャが必要です
+      </div>
+      <button onclick="loadBlobVideo()">Blob動画を読み込み</button>
+    </div>
+
+    <div style="margin-top: 30px">
+      <button onclick="forcePreventPiPRemoval()">
+        PiP属性削除を防止（テスト用）
+      </button>
+      <button onclick="testFrameCapture()">手動フレームキャプチャテスト</button>
+      <canvas
+        id="testCanvas"
+        width="400"
+        height="200"
+        style="border: 1px solid #ccc; display: none"
+      ></canvas>
+    </div>
+
+    <script>
+      let selectedVideo = null;
+
+      // 動画をクリックで選択
+      document.querySelectorAll("video").forEach((video) => {
+        video.addEventListener("click", function () {
+          // 他の動画の選択を解除
+          document.querySelectorAll("video").forEach((v) => {
+            v.style.outline = "";
+          });
+          // 選択した動画にハイライト
+          this.style.outline = "3px solid blue";
+          selectedVideo = this;
+          console.log("動画が選択されました:", this.src || this.currentSrc);
+        });
+      });
+
+      // PiP属性削除を防止するためのオーバーライド
+      function forcePreventPiPRemoval() {
+        console.log("PiP属性削除防止を設定します");
+
+        // setAttributeをオーバーライド
+        const originalSetAttribute = Element.prototype.setAttribute;
+        Element.prototype.setAttribute = function (name, value) {
+          if (name === "disablepictureinpicture" && this.tagName === "VIDEO") {
+            console.log("disablepictureinpicture属性の削除を防止しました");
+            return;
+          }
+          return originalSetAttribute.call(this, name, value);
+        };
+
+        // removeAttributeをオーバーライド
+        const originalRemoveAttribute = Element.prototype.removeAttribute;
+        Element.prototype.removeAttribute = function (name) {
+          if (name === "disablepictureinpicture" && this.tagName === "VIDEO") {
+            console.log("disablepictureinpicture属性の削除を防止しました");
+            return;
+          }
+          return originalRemoveAttribute.call(this, name);
+        };
+
+        alert("PiP属性削除防止が設定されました");
+      }
+
+      // 手動フレームキャプチャテスト
+      function testFrameCapture() {
+        if (!selectedVideo) {
+          alert("まず動画を選択してください");
+          return;
+        }
+
+        const canvas = document.getElementById("testCanvas");
+        const ctx = canvas.getContext("2d");
+
+        try {
+          // 動画の現在フレームをキャンバスに描画
+          ctx.drawImage(selectedVideo, 0, 0, canvas.width, canvas.height);
+
+          // Base64データとして取得
+          const frameData = canvas.toDataURL("image/png");
+          console.log(
+            "フレームキャプチャ成功:",
+            frameData.substring(0, 100) + "..."
+          );
+
+          // キャンバスを表示
+          canvas.style.display = "block";
+
+          alert(
+            "フレームキャプチャが成功しました！コンソールログを確認してください。"
+          );
+        } catch (error) {
+          console.error("フレームキャプチャエラー:", error);
+          alert("フレームキャプチャに失敗しました: " + error.message);
+        }
+      }
+
+      // Blob動画を読み込み
+      function loadBlobVideo() {
+        fetch(
+          "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4"
+        )
+          .then((response) => response.blob())
+          .then((blob) => {
+            const blobUrl = URL.createObjectURL(blob);
+            document.getElementById("blobVideo").src = blobUrl;
+            console.log("Blob動画を読み込みました:", blobUrl);
+          })
+          .catch((error) => {
+            console.error("Blob動画の読み込みに失敗:", error);
+          });
+      }
+
+      // ページ読み込み完了時
+      window.addEventListener("load", function () {
+        console.log("フレームキャプチャテストページ読み込み完了");
+        console.log("操作方法:");
+        console.log("1. 赤い枠の動画をクリック");
+        console.log('2. "PiP属性削除を防止"ボタンをクリック');
+        console.log("3. Ctrl+Alt+Vでフレームキャプチャテスト");
+      });
+    </script>
+  </body>
+</html>
